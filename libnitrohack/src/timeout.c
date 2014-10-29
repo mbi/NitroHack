@@ -1280,16 +1280,14 @@ typedef struct {
 } ttable;
 
 /* table of timeout functions */
-#define TTAB(a, b) {a, b, #a}
 static const ttable timeout_funcs[NUM_TIME_FUNCS] = {
-    TTAB(rot_organic,	NULL),
-    TTAB(rot_corpse,	NULL),
-    TTAB(revive_mon,	NULL),
-    TTAB(burn_object,	cleanup_burn),
-    TTAB(hatch_egg,	NULL),
-    TTAB(fig_transform,	NULL)
+    { rot_organic,	NULL,		"rot_organic" },
+    { rot_corpse,	NULL,		"rot_corpse" },
+    { revive_mon,	NULL,		"revive_mon" },
+    { burn_object,	cleanup_burn,	"burn_object" },
+    { hatch_egg,	NULL,		"hatch_egg" },
+    { fig_transform,	NULL,		"fig_transform" }
 };
-#undef TTAB
 
 
 static const char *kind_name(short kind)
@@ -1589,7 +1587,8 @@ static void write_timer(struct memfile *mf, timer_element *timer)
 boolean obj_is_local(struct obj *obj)
 {
     switch (obj->where) {
-	case OBJ_INVENT:	return FALSE;
+	case OBJ_INVENT:
+	case OBJ_MAGIC_CHEST:	return FALSE;
 	case OBJ_FLOOR:
 	case OBJ_BURIED:	return TRUE;
 	case OBJ_CONTAINED:	return obj_is_local(obj->ocontainer);

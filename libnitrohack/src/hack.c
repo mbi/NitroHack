@@ -759,13 +759,13 @@ static void dosinkfall(void)
 	HLevitation++;
 	if (uleft && uleft->otyp == RIN_LEVITATION) {
 	    obj = uleft;
-	    Ring_off(obj);
 	    off_msg(obj, FALSE);
+	    Ring_off(obj);
 	}
 	if (uright && uright->otyp == RIN_LEVITATION) {
 	    obj = uright;
-	    Ring_off(obj);
 	    off_msg(obj, FALSE);
+	    Ring_off(obj);
 	}
 	if (uarmf && uarmf->otyp == LEVITATION_BOOTS) {
 	    obj = uarmf;
@@ -1573,19 +1573,26 @@ int domove(schar dx, schar dy, schar dz)
 	    }
 	}
 
-	if (((wtcap = near_capacity()) >= OVERLOADED
-	    || (wtcap > SLT_ENCUMBER &&
-		(Upolyd ? (u.mh < 5 && u.mh != u.mhmax)
-			: (u.uhp < 10 && u.uhp != u.uhpmax))))
-	   && !Is_airlevel(&u.uz)) {
-	    if (wtcap < OVERLOADED) {
+	wtcap = near_capacity();
+
+	if (!Is_airlevel(&u.uz)) {
+	    boolean low_carry_hp = Upolyd ?
+			(u.mh < 5 && u.mh != u.mhmax) :
+			(u.uhp < 10 && u.uhp != u.uhpmax);
+
+	    /* 'Strained' and 'Overloaded' may stop you from moving. */
+	    if (wtcap >= HVY_ENCUMBER && low_carry_hp) {
 		pline("You don't have enough stamina to move.");
 		exercise(A_CON, FALSE);
-	    } else
+		nomul(0, NULL);
+		return 1;
+	    } else if (wtcap >= OVERLOADED) {
 		pline("You collapse under your load.");
-	    nomul(0, NULL);
-	    return 1;
+		nomul(0, NULL);
+		return 1;
+	    }
 	}
+
 	if (u.uswallow) {
 		dx = dy = 0;
 		u.ux = x = u.ustuck->mx;
@@ -1594,7 +1601,7 @@ int domove(schar dx, schar dy, schar dz)
 		y_intent = y;
 		mtmp = u.ustuck;
 	} else {
-		if (Is_airlevel(&u.uz) && rn2(4) &&
+		if (Is_airlevel(&u.uz) && rnd(20) > ACURR(A_DEX) &&
 			!Levitation && !Flying) {
 		    switch(rn2(3)) {
 		    case 0:
@@ -2646,8 +2653,11 @@ int dopickup(void)
 	    }
 	}
 	if (!OBJ_AT(u.ux, u.uy)) {
+	    if (IS_MAGIC_CHEST(level->locations[u.ux][u.uy].typ))
+		pline("The magic chest is firmly attached to the floor.");
+	    else
 		pline("There is nothing here to pick up.");
-		return 0;
+	    return 0;
 	}
 	if (!can_reach_floor()) {
 		if (u.usteed && P_SKILL(P_RIDING) < P_BASIC)
@@ -2988,11 +2998,37 @@ int inv_weight(void)
 	int wt = 0;
 
 	while (otmp) {
-		if (otmp->oclass == COIN_CLASS)
-			wt += (int)(((long)otmp->quan + 50L) / 100L);
-		else if (otmp->otyp != BOULDER || !throws_rocks(youmonst.data))
-			wt += otmp->owt;
-		otmp = otmp->nobj;
+	    if (otmp->oclass == COIN_CLASS) {
+		wt += (int)(((long)otmp->quan + 50L) / 100L);
+	    } else if (otmp->otyp != BOULDER || !throws_rocks(youmonst.data)) {
+		if (otmp == uarm && otmp->owt > P_BODY_ARMOR_MIN_WEIGHT) {
+		    /*
+		     * Reduce weight of worn body armor based on skill and
+		     * weight difference from leather armor:
+		     *
+		     *  - unskilled -> no reduction
+		     *  - basic     -> 25% reduction
+		     *  - skilled   -> 50% reduction
+		     *  - expert    -> 75% reduction
+		     *
+		     * e.g. Wearing plate mail {450} at expert only weighs {225}.
+		     */
+		    int wt_diff = otmp->owt - P_BODY_ARMOR_MIN_WEIGHT;
+		    int ba_skill = mon_skill_level(P_BODY_ARMOR, &youmonst);
+		    wt += P_BODY_ARMOR_MIN_WEIGHT;
+		    if (ba_skill <= P_UNSKILLED)
+			wt += wt_diff;
+		    else if (ba_skill == P_BASIC)
+			wt += wt_diff * 3 / 4;
+		    else if (ba_skill == P_SKILLED)
+			wt += wt_diff / 2;
+		    else if (ba_skill >= P_EXPERT)
+			wt += wt_diff / 4;
+		} else {
+		    wt += otmp->owt;
+		}
+	    }
+	    otmp = otmp->nobj;
 	}
 	wc = weight_cap();
 	return wt - wc;

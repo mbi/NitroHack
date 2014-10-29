@@ -27,6 +27,8 @@
 #define LEVSTYLE_ANYTOANY	1
 #define LEVSTYLE_RING		2
 #define LEVSTYLE_HUB		3
+#define LEVSTYLE_GRID		4
+#define LEVSTYLE_MAX_TYPES	5
 
 /* symbolic names for capacity levels */
 #define UNENCUMBERED	0
@@ -150,6 +152,7 @@ extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define SIGNAL_NOMENU	  0x10	/* return -1 rather than 0 if none allowed */
 #define SIGNAL_ESCAPE	  0x20	/* return -2 rather than 0 if menu escaped */
 #define FEEL_COCKATRICE	  0x40	/* engage cockatrice checks and react */
+#define SHOW_MAGIC_CHEST  0x80	/* show 'magic chest' as the first entry */
 
 /* Flags to control query_category() */
 /* BY_NEXTHERE used by query_category() too, so skip 0x01 */

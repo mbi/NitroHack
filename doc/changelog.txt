@@ -9,6 +9,10 @@ Highlights
 ----------
 * New body armor and shield skills: grants bonus AC and MC; heavier suits of
   armor and shields get bigger bonuses and train the skills faster.
+* Magic chests!  Any item put into a magic chest can be looted out of any other
+  magic chest in the dungeon, placed at set locations.  This eliminates tedious
+  stash consolidation and transporting of items to and from stashes and fixed
+  dungeon resources like altars, shops and water.
 * Mazes completely removed from Gehennom!
 * New resistance system: resistances gained from corpses and crowning only
   provide partial protection.
@@ -46,17 +50,24 @@ Character
     - sleep: half duration, doubled chance to awaken from combat
     - disintegration: 90% chance to resist
     - poison: half damage, having any protects against other effects
+    - As a side effect of this patch, negative AC and half physical damage
+      resistance no longer reduce damage from fire, cold, shock or acid attacks.
 * Reflection no longer reflects breaths; disintegration breath is treated as a
   beam to prevent unfair deaths due to this change.  The breath graphic has been
   changed accordingly.
 * Changes to skills:
     - New body armor skill:
         - Body armor skill grants bonus AC and MC for suits of body armor based
-          on their weight and capped by your skill.
+          on their weight and capped by your skill, as well as weight reduction
+          for worn body armor.
         - Grants (weight / 50 - 2) bonus AC for body armor capped at +2 at
           basic, +4 at skilled and +7 at expert.
         - Grants (weight / 100 - 1) minimum MC for body armor capped at MC1 at
           basic, MC2 at skilled and MC3 at expert.
+        - Reduces weight of worn body armor heavier than leather armor (150wt)
+          according to the difference: 25% at basic, 50% at skilled and 75% at
+          expert, e.g. plate mail (450wt) only weighs 225wt at expert skill.
+          This reduced weight does not affect the AC or MC bonuses above.
         - Trains to expert in between 16k and 24k turns; wearing heavier suits
           of body armor speeds up training.
         - Maximum skill levels:
@@ -106,6 +117,21 @@ Character
   in the case of deliberate teleports consuming hunger.
 * Punishment (i.e. being attached to a ball and chain) no longer stops you from
   displacing pets.
+* Movement at low HP (less than 10, or 5 if polymorphed) is stopped at strained
+  (the same encumbrance that causes HP loss on movement) instead of stressed,
+  which simplifies the relationship between encumbrance, HP loss and stopped
+  movement a bit:
+    - Before:
+        - Stressed
+            - cannot move with less than 10 HP (5 if polymorphed)
+        - Strained
+            - lose 1 HP every 30 turns if moving
+            - lose 1 HP every 3 turns if attacking
+    - After:
+        - Strained
+            - cannot move with less than 10 HP (5 if polymorphed)
+            - lose 1 HP every 30 turns if moving
+            - lose 1 HP every 3 turns if attacking
 * Fix C343-238: "(Unix and VMS only) The 'Who are you?' prompt does not accept
   digits in the response."  The official bug description is inaccurate: it's
   names that START with a digit that aren't accepted by vault guards, and it
@@ -116,6 +142,26 @@ Character
 
 Dungeon
 -------
+* New dungeon feature: magic chests!
+    - Any item placed in a magic chest can be looted out of any other magic
+      chest in the dungeon, removing the need to consolidate stashes.
+    - Magic chests are placed in set locations near useful resources such as
+      altars, shops and water, reducing the distance that items need to be
+      hauled to such resources.  The set locations are:
+        - Minetown
+        - Sokoban entry level
+        - Fort Ludios
+        - Quest home level
+        - Castle
+        - Valley of the Dead
+        - Orcus-town
+        - Fake Wizard's Tower
+    - Magic chests are fixed to the ground and as such cannot be tipped.
+    - Attempting to put a corpse set to revive into a magic chest will revive it
+      immediately, to prevent exploiting them to get rid of such corpses.
+* Changes to standard rooms-and-corridors level generation:
+    - Grid room level style (from K-Mod).
+    - Raise chance of special rooms-and-corridors level style from 10% to 20%.
 * Changes to Gehennom:
     - Mazes completely removed from Gehennom!  Both fill levels and filler
       around special levels consist of lava caverns.
@@ -129,6 +175,10 @@ Dungeon
     - New entrance level to Vlad's Tower with trees, water, vampires, zombies,
       ravens and a drawbridge entrance leading to the traditional tower levels
       (from dNetHack).
+* Changes to the End Game:
+    - Moving on the Plane of Air is generally much easier, as it now only stops
+      movement when failing a d20 roll against your dexterity (was previously
+      75% of the time for all characters).
 * Sokoban prizes moved to Mines End; the end of Sokoban now has a guaranteed
   sack containing 8 rings and wands (the ring and wand on each level has been
   removed as a result).  This makes Sokoban much more optional in DynaHack than
@@ -142,6 +192,8 @@ Dungeon
 * Drawbridge instant death removed: drawbridges can only be destroyed by force
   bolts when closed, not open.
 * Prevent magic traps from being created above dungeon level 5.
+* Reduce initial scuffing of randomly-placed engravings to increase the chance
+  that they can be read when they're first encountered.
 * Fix the cosmetic issue of horizontally-flipped levels appearing slightly
   misaligned in the map area.
 * Fix waking monsters level-wide when entering courts, swamps, morgues, zoos and
@@ -149,6 +201,11 @@ Dungeon
   being entered have a chance to to be woken.
 * Fix tracking of upward branches with `#history`, and make a note when entering
   any new level and not just deeper ones (from NetHack4).
+
+Wishing
+-------
+* Wands of wishing are generated with at least one charge (1-3 instead of 0-2,
+  from UnNetHack 5).
 
 Items
 -----
@@ -178,18 +235,20 @@ Items
   that weapon and gives identifying messages similar to wearing other items that
   grant stealth.
 * Hitting a monster with a weapon of stealth identifies the stealth property on
-  that weapon, and also gives a message that you "silently hit" or "silently
-  kill" the monster, hinting at how weapons of stealth bypass the usual combat
-  noise mechanic.
+  that weapon.
 * Improve stacking of random candles by removing random chance of them being
   blessed or cursed (from AceHack).  Between wax and tallow candles, and
   blessed, uncursed and cursed status, an inventory could be filled with 6
   different candle stacks, even with DynaHack's improved item stacking!
-* Grant +1 to-hit for all short swords.
+* Grant +1 to-hit for all short swords (from K-Mod).
 * Allow knife and stiletto as possible tin-opening tools (from K-Mod).
 * The "magical" prefix on items is only omitted once all properties on it have
   been identified instead of once any of them have been, making it easier to
   discover items that have more than one property.
+* Show which hand a ring of levitation was on when a sink forcefully removes it.
+* Rings with enchantment +3 or lower no longer have a chance to explode when
+  charged, and rings at -5 or lower will only explode from cursed charging (from
+  SporkHack).
 * Fix prefixes like "magical" and "prize" not appearing on rings, wands,
   spellbooks and iron balls under certain circumstances.
 * Fix C343-146: "Unseen wand of striking becomes known if zapped by unseen
@@ -200,6 +259,12 @@ Items
   after the prize itself has vanished.
 * Fix contents of containers created on special levels not being included in the
   initial container weight.
+* Fix completely eroded armor being destroyed by further erosion when greased or
+  erodeproofed.
+* Fix crash when item is unequipped or lost while being equipped (from
+  NetHack4).
+    - Fix ring worn message being shown after it is forcefully removed by a sink
+      when wearing a ring of levitation over a sink.
 
 Monsters
 --------
@@ -234,6 +299,10 @@ Interface
     - Show a message of the identity of whistles and instruments when they are
       discovered on use.
     - Show message when pets or other monsters grow up (from SLASH'EM Extended).
+    - Attacking with a weapon of stealth, as well as with a knife while
+      stealthy, gives a message that you "silently hit" or "silently kill"
+      monsters, hinting at options for fighting without awakening nearby
+      monsters.  These messages are new, but the mechanic itself is not.
 * Make wearing and taking off messages more descriptive, e.g. "You finish taking
   off a +0 leather armor" instead of "You finish taking off your suit."
 * Curses on armor, jewelry and eyewear are now revealed when they are worn
@@ -257,6 +326,7 @@ Interface
   multiple shopkeepers in sight and spells of fireball and cone of cold.
 * Dungeon `#overview` can toggle showing levels with no notable features.
     - Dungeon `#overview` no longer exits after viewing a single level.
+* Make extended command prompt case insensitive, like NetHack's (from NetHack4).
 * Fix the color of the Wizard's Tower walls when viewed from another level using
   the `Ctrl-O` dungeon overview.
 * Fix "T - take off" not appearing in the item action menu of meat rings.
