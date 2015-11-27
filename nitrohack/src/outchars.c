@@ -6,6 +6,7 @@
 
 #include "nhcurses.h"
 #include <ctype.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 
@@ -51,7 +52,7 @@ static struct curses_symdef unicode_graphics_ovr[] = {
     {"brcorn",	-1,	{0x2518, 0},	0},	/* ┘ bottom right */
     {"crwall",	-1,	{0x253C, 0},	0},	/* ┼ cross */
     {"tuwall",	-1,	{0x2534, 0},	0},	/* ┴ up */
-    {"tdwall",	-1,	{0x252C, 0},	0},	/* T down */
+    {"tdwall",	-1,	{0x252C, 0},	0},	/* ┬ down */
     {"tlwall",	-1,	{0x2524, 0},	0},	/* ┤ left */
     {"trwall",	-1,	{0x251C, 0},	0},	/* ├ right */
     {"pool",	-1,	{0x2248, 0},	0},	/* ≈ almost equal to */
@@ -67,8 +68,6 @@ static struct curses_symdef unicode_graphics_ovr[] = {
     {"fountain",-1,	{0x00B6, 0},	0},	/* ¶ pilcrow sign */
     {"room",	-1,	{0x00B7, 0},	0},	/* · centered dot */
     {"darkroom",-1,	{0x00B7, 0},	0},	/* · centered dot */
-    {"corr",	-1,	{0x2591, 0},	0},	/* ░ light shading */
-    {"litcorr",	-1,	{0x2592, 0},	0},	/* ▒ medium shading */
     {"upladder",-1,	{0x2264, 0},	0},	/* ≤ less-than-or-equals */
     {"dnladder",-1,	{0x2265, 0},	0},	/* ≥ greater-than-or-equals */
     {"upsstair",-1,	{0x00AB, 0},	0},	/* « left-pointing double angle quotation mark */
@@ -294,10 +293,14 @@ static void write_unisym_config(void)
 	return;
     fnncat(filename, FN("unicode.conf"), BUFSZ);
     
-    fd = sys_open(filename, O_TRUNC | O_CREAT | O_RDWR, 0660);
+    fd = sys_open(filename, O_TRUNC | O_CREAT | O_RDWR, 0644);
     if (fd == -1)
 	return;
-    
+#ifdef UNIX
+    /* bypass umask and set 0644 for real */
+    fchmod(fd, 0644);
+#endif
+
     write(fd, uniconf_header, strlen(uniconf_header));
     write_symlist(fd, unicode_drawing->bgelements, unicode_drawing->num_bgelements);
     write_symlist(fd, unicode_drawing->traps, unicode_drawing->num_traps);
@@ -666,15 +669,20 @@ void switch_graphics(enum nh_text_mode mode)
 	case ASCII_GRAPHICS:
 	    cur_drawing = default_drawing;
 	    break;
-	    
+
 /*
  * Drawing with the full unicode charset. Naturally this requires a unicode terminal.
  */
 	case UNICODE_GRAPHICS:
 	    if (ui_flags.unicode)
 		cur_drawing = unicode_drawing;
+	    else
+		cur_drawing = default_drawing;
 	    break;
     }
+
+    /* Set box drawing characters. */
+    nh_box_set_graphics(mode);
 }
 
 

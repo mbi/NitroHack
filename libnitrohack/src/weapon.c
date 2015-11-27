@@ -90,8 +90,8 @@ static void give_may_advance_msg(int skill)
 
 static boolean could_advance(int);
 static int slots_required(int);
-static char *skill_level_name(int,char *);
-static void skill_advance(int);
+static const char *skill_level_name(xchar);
+static boolean skill_advance(int);
 
 #define P_NAME(type) ((skill_names_indices[type] > 0) ? \
 		      OBJ_NAME(objects[skill_names_indices[type]]) : \
@@ -755,12 +755,12 @@ int dbon(void)
 }
 
 
-/* copy the skill level name into the given buffer */
-static char *skill_level_name(int skill, char *buf)
+/* return the skill level name */
+static const char *skill_level_name(xchar skill_level)
 {
     const char *ptr;
 
-    switch (P_SKILL(skill)) {
+    switch (skill_level) {
 	case P_UNSKILLED:    ptr = "Unskilled"; break;
 	case P_BASIC:	     ptr = "Basic";     break;
 	case P_SKILLED:	     ptr = "Skilled";   break;
@@ -770,8 +770,8 @@ static char *skill_level_name(int skill, char *buf)
 	case P_GRAND_MASTER: ptr = "Grand Master"; break;
 	default:	     ptr = "Unknown";	break;
     }
-    strcpy(buf, ptr);
-    return buf;
+
+    return ptr;
 }
 
 /* return the # of slots required to advance the skill */
@@ -861,8 +861,18 @@ static boolean could_advance(int skill)
 	    && u.skills_advanced < P_SKILL_LIMIT));
 }
 
-static void skill_advance(int skill)
+/* return true if the skill was advanced */
+static boolean skill_advance(int skill)
 {
+    char buf[BUFSZ];
+
+    snprintf(buf, BUFSZ, "Enhance %s to %s for %d slot%s (%d slot%s left)?",
+	     P_NAME(skill), skill_level_name(P_SKILL(skill) + 1),
+	     slots_required(skill), plur(slots_required(skill)),
+	     u.weapon_slots, plur(u.weapon_slots));
+    if (yn(buf) != 'y')
+	return FALSE;
+
     u.weapon_slots -= slots_required(skill);
     P_SKILL(skill)++;
     u.skill_record[u.skills_advanced++] = skill;
@@ -875,6 +885,8 @@ static void skill_advance(int skill)
 	find_ac();
     if (skill == P_BODY_ARMOR)
 	encumber_msg();
+
+    return TRUE;
 }
 
 /*
@@ -965,6 +977,36 @@ static int skill_crosstrain_bonus(int skill)
     return max(highest_skill - base_skill + 1, 1);
 }
 
+/*
+ * Express progress of training of a skill as a percentage, where every 100%
+ * represents a full level of possible enhancement, e.g. a basic skill that
+ * returns 150% for this means it can be advanced to skilled and is 50% of the
+ * way to expert.
+ */
+static int skill_training_percent(int skill)
+{
+    int percent = 0;
+    int i;
+
+    if (P_RESTRICTED(skill))
+	return 0;
+
+    for (i = P_SKILL(skill); i < P_MAX_SKILL(skill); i++) {
+	if (P_ADVANCE(skill) >= practice_needed_to_advance(skill, i)) {
+	    percent += 100;
+	} else {
+	    int mintrain = (i == P_UNSKILLED) ? 0 :
+			   practice_needed_to_advance(skill, i - 1);
+	    int partial = (P_ADVANCE(skill) - mintrain) * 100 /
+			  (practice_needed_to_advance(skill, i) - mintrain);
+	    percent += min(partial, 100);
+	    break;
+	}
+    }
+
+    return percent;
+}
+
 static const struct skill_range {
 	const char *name;
 	short first, last;
@@ -986,7 +1028,7 @@ int enhance_weapon_skill(void)
 {
     int pass, i, n, crosstrain, id,
 	to_advance, eventually_advance, selected[1];
-    char buf[BUFSZ], sklnambuf[BUFSZ];
+    char buf[BUFSZ];
     const char *prefix;
     struct menulist menu;
     boolean speedy = FALSE;
@@ -1047,16 +1089,17 @@ int enhance_weapon_skill(void)
 	    crosstrain = skill_crosstrain_bonus(i);
 	    if (crosstrain > 1 && P_SKILL(i) < P_MAX_SKILL(i))
 		sprintf(eos(buf), " (x%d)", crosstrain);
-	    skill_level_name(i, sklnambuf);
-	    sprintf(eos(buf), "\t[%s]", sklnambuf);
-	    if (P_SKILL(i) < P_MAX_SKILL(i)) {
-		int mintrain = P_SKILL(i) == P_UNSKILLED ? 0 :
-			       practice_needed_to_advance(i, P_SKILL(i) - 1);
-		sprintf(eos(buf), "\t%5d%%",
-			(P_ADVANCE(i) - mintrain) * 100 /
-			(practice_needed_to_advance(i, P_SKILL(i)) - mintrain));
-	    } else {
+
+	    sprintf(eos(buf), "\t[%s\t/ %s]",
+		    skill_level_name(P_SKILL(i)),
+		    skill_level_name(P_MAX_SKILL(i)));
+
+	    if (P_SKILL(i) == P_MAX_SKILL(i)) {
 		sprintf(eos(buf), "\t   MAX");
+	    } else if (P_ADVANCE(i) == 0) {
+		sprintf(eos(buf), "\t      ");
+	    } else {
+		sprintf(eos(buf), "\t%5d%%", skill_training_percent(i));
 	    }
 	    if (wizard) {
 		sprintf(eos(buf), "/%5d(%4d)",
@@ -1078,12 +1121,14 @@ int enhance_weapon_skill(void)
 	n = display_menu(menu.items, menu.icount, buf,
 			    to_advance ? PICK_ONE : PICK_NONE, selected);
 	if (n == 1) {
+	    boolean skill_advanced;
 	    n = selected[0] - 1;	/* get item selected */
-	    skill_advance(n);
+	    skill_advanced = skill_advance(n);
 	    /* check for more skills able to advance, if so then .. */
 	    for (n = i = 0; i < P_NUM_SKILLS; i++) {
 		if (can_advance(i, speedy)) {
-		    if (!speedy) pline("You feel you could be more dangerous!");
+		    if (skill_advanced && !speedy)
+			pline("You feel you could be more dangerous!");
 		    n++;
 		    break;
 		}
@@ -1099,11 +1144,11 @@ int enhance_weapon_skill(void)
 int dump_skills(void)
 {
     int pass, i;
-    char buf[BUFSZ], sklnambuf[BUFSZ];
+    char buf[BUFSZ];
     struct menulist menu;
 
     init_menulist(&menu);
-    
+
     /* List the skills. */
     for (pass = 0; pass < SIZE(skill_ranges); pass++)
 	for (i = skill_ranges[pass].first; i <= skill_ranges[pass].last; i++) {
@@ -1113,13 +1158,15 @@ int dump_skills(void)
 
 	    if (P_RESTRICTED(i) || u.weapon_skills[i].skill == P_UNSKILLED)
 		continue;
-	    
-	    skill_level_name(i, sklnambuf);
-	    sprintf(buf, " %s\t[%s]", P_NAME(i), sklnambuf);
+
+	    sprintf(buf, " %s\t[%s\t/ %s]",
+		    P_NAME(i),
+		    skill_level_name(P_SKILL(i)),
+		    skill_level_name(P_MAX_SKILL(i)));
 	    add_menuitem(&menu, 0, buf, 0, FALSE);
 	}
     display_menu(menu.items, menu.icount, "Your skills at the end:", PICK_NONE, NULL);
-    
+
     free(menu.items);
     return 0;
 }

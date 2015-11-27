@@ -118,6 +118,7 @@ static struct {
 	{ "magic",	MAGIC_TRAP },
 	{ "anti magic",	ANTI_MAGIC },
 	{ "polymorph",	POLY_TRAP },
+	{ "shuriken",	SHURIKEN_TRAP },
 	{ 0, 0 }
 };
 
@@ -873,6 +874,8 @@ void scan_map(char *map, sp_lev *sp)
 
 	/* Then parse it now */
 	while (map && *map) {
+		if (max_hig >= ROWNO)
+			lc_error("Map too tall, max is %d", ROWNO);
 		tmpmap[max_hig] = malloc(max_len);
 		s1 = strchr(map, '\n');
 		if (s1) {

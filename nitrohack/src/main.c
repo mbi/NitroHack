@@ -20,6 +20,8 @@ int initrole = ROLE_NONE, initrace = ROLE_NONE;
 int initgend = ROLE_NONE, initalign = ROLE_NONE;
 nh_bool random_player = FALSE;
 
+char *override_hackdir, *override_userdir, *override_vardir;
+
 enum menuitems {
     NEWGAME = 1,
     TUTORIAL,
@@ -122,17 +124,29 @@ static char** init_game_paths(const char *argv0)
 
 #if defined(UNIX)
     if (getgid() == getegid()) {
-	dir = getenv("DYNAHACKDIR");
+	if (override_hackdir)
+	    dir = override_hackdir;
+	if (!dir)
+	    dir = getenv("DYNAHACKDIR");
 	if (!dir)
 	    dir = getenv("HACKDIR");
-    } else
+    } else {
 	dir = NULL;
-    
+    }
     if (!dir)
 	dir = DYNAHACKDIR;
-    
+
     for (i = 0; i < PREFIX_COUNT; i++)
 	pathlist[i] = dir;
+
+    /* variable data "playground" directory */
+    if (override_vardir) {
+	pathlist[BONESPREFIX] = override_vardir;
+	pathlist[SCOREPREFIX] = override_vardir;
+	pathlist[LOCKPREFIX] = override_vardir;
+	pathlist[TROUBLEPREFIX] = override_vardir;
+    }
+
     pathlist[DUMPPREFIX] = malloc(BUFSZ);
     free_dump = TRUE;
     if (!get_gamedir(DUMP_DIR, pathlist[DUMPPREFIX])) {
@@ -142,9 +156,12 @@ static char** init_game_paths(const char *argv0)
 	if (!pathlist[DUMPPREFIX])
 	    pathlist[DUMPPREFIX] = "./";
     }
-    
+
 #elif defined(WIN32)
-    dir = getenv("DYNAHACKDIR");
+    if (override_hackdir)
+	dir = override_hackdir;
+    if (!dir)
+	dir = getenv("DYNAHACKDIR");
     if (!dir) {
 	strncpy(dirbuf, argv0, 1023);
 	pos = strrchr(dirbuf, '\\');
@@ -158,9 +175,17 @@ static char** init_game_paths(const char *argv0)
 	*(++pos) = '\0';
 	dir = dirbuf;
     }
-    
+
     for (i = 0; i < PREFIX_COUNT; i++)
 	pathlist[i] = dir;
+
+    /* variable data "playground" directory */
+    if (override_vardir) {
+	pathlist[BONESPREFIX] = override_vardir;
+	pathlist[SCOREPREFIX] = override_vardir;
+	pathlist[LOCKPREFIX] = override_vardir;
+	pathlist[TROUBLEPREFIX] = override_vardir;
+    }
 
     if (get_gamedir(DUMP_DIR, w_dump_dir)) {
 	int dump_sz = WideCharToMultiByte(CP_ACP, 0, w_dump_dir, -1,
@@ -190,7 +215,7 @@ static char** init_game_paths(const char *argv0)
     /* Avoid a trap for people trying to port this. */
 #error You must run DynaHack under Win32 or Linux.
 #endif
-    
+
     /* alloc memory for the paths and append slashes as required */
     for (i = 0; i < PREFIX_COUNT; i++) {
 	char *tmp = pathlist[i];
@@ -200,7 +225,7 @@ static char** init_game_paths(const char *argv0)
 	    free(tmp);
 	append_slash(pathlist[i]);
     }
-    
+
     return pathlist;
 }
 
@@ -285,26 +310,28 @@ int main(int argc, char *argv[])
 {
     char **gamepaths;
     int i;
-    
+
     umask(0777 & ~FCMASK);
-    
+
+    process_args(argc, argv);	/* grab --help, --version, -H, -U early */
+
     init_options();
-    
+
     gamepaths = init_game_paths(argv[0]);
     nh_lib_init(&curses_windowprocs, gamepaths);
     for (i = 0; i < PREFIX_COUNT; i++)
 	free(gamepaths[i]);
     free(gamepaths);
-    
+
     setup_signals();
     init_curses_ui();
     read_nh_config();
 
     process_args(argc, argv);	/* command line options */
     init_displaychars();
-    
+
     mainmenu();
-    
+
     exit_curses_ui();
     nh_lib_exit();
     free_displaychars();
@@ -348,29 +375,59 @@ static void process_args(int argc, char *argv[])
     /*
      * Process options.
      */
-    while (argc > 1 && argv[1][0] == '-'){
+    while (argc > 1 && argv[1][0] == '-') {
 	argv++;
 	argc--;
-	switch(argv[0][1]){
+	switch (argv[0][1]) {
+	case '-':
+	    if (!strcmp(argv[0], "--help")) {
+		puts("Usage: dynahack [OPTIONS]");
+		puts("");
+		puts("--help      show this help and exit");
+		puts("--version   show version number and exit");
+		puts("-D          start games in wizard mode");
+		puts("-X          start games in explore mode");
+		puts("-u name     specify player name");
+		puts("-p role     specify role");
+		puts("-r race     specify race");
+		puts("-@          specify a random character");
+		puts("-H dir      override the data directory");
+		puts("-V dir      override the variable data \"playground\" directory");
+		puts("-U dir      override the user directory");
+		exit(0);
+	    } else if (!strcmp(argv[0], "--version")) {
+		printf("DynaHack version %d.%d.%d\n",
+		       VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
+		exit(0);
+	    } else {
+		fprintf(stderr, "Unrecognized option '%s'\n", argv[0]);
+		exit(1);
+	    }
+	    break;
+
 	case 'D':
 	    ui_flags.playmode = MODE_WIZARD;
 	    break;
-		
+
 	case 'X':
 	    ui_flags.playmode = MODE_EXPLORE;
 	    break;
-	    
+
 	case 'u':
-	    if (argv[0][2])
+	    if (argv[0][2]) {
+		/* -uname */
 		strncpy(settings.plname, argv[0]+2, sizeof(settings.plname)-1);
-	    else if (argc > 1) {
+	    } else if (argc > 1) {
+		/* -u name */
 		argc--;
 		argv++;
 		strncpy(settings.plname, argv[0], sizeof(settings.plname)-1);
-	    } else
-		    printf("Player name expected after -u");
+	    } else {
+		fputs("Player name expected after -u\n", stderr);
+		exit(1);
+	    }
 	    break;
-	    
+
 	case 'p': /* profession (role) */
 	    if (argv[0][2]) {
 		i = str2role(ri, &argv[0][2]);
@@ -384,7 +441,7 @@ static void process_args(int argc, char *argv[])
 		    initrole = i;
 	    }
 	    break;
-	    
+
 	case 'r': /* race */
 	    if (argv[0][2]) {
 		i = str2race(ri, &argv[0][2]);
@@ -398,11 +455,74 @@ static void process_args(int argc, char *argv[])
 		    initrace = i;
 	    }
 	    break;
-	    
+
 	case '@':
 	    random_player = TRUE;
 	    break;
-	    
+
+	case 'H':
+#ifdef UNIX
+	    if (setregid(-1, getgid()) == -1) {
+		perror("Error processing -H");
+		exit(14);
+	    }
+#endif
+	    if (argv[0][2]) {
+		/* -Hdir */
+		override_hackdir = argv[0] + 2;
+	    } else if (argc > 1) {
+		/* -H dir */
+		argv++;
+		argc--;
+		override_hackdir = argv[0];
+	    } else {
+		fputs("data directory expected after -H\n", stderr);
+		exit(1);
+	    }
+	    break;
+
+	case 'V':
+#ifdef UNIX
+	    if (setregid(-1, getgid()) == -1) {
+		perror("Error processing -V");
+		exit(14);
+	    }
+#endif
+	    if (argv[0][2]) {
+		/* -Vdir */
+		override_vardir = argv[0] + 2;
+	    } else if (argc > 1) {
+		/* -V dir */
+		argv++;
+		argc--;
+		override_vardir = argv[0];
+	    } else {
+		fputs("variable data directory expected after -V\n", stderr);
+		exit(1);
+	    }
+	    break;
+
+	case 'U':
+#ifdef UNIX
+	    if (setregid(-1, getgid()) == -1) {
+		perror("Error processing -U");
+		exit(14);
+	    }
+#endif
+	    if (argv[0][2]) {
+		/* -Udir */
+		override_userdir = argv[0] + 2;
+	    } else if (argc > 1) {
+		/* -U dir */
+		argv++;
+		argc--;
+		override_userdir = argv[0];
+	    } else {
+		fputs("user directory expected after -U\n", stderr);
+		exit(1);
+	    }
+	    break;
+
 	default:
 	    i = str2role(ri, argv[0]);
 	    if (i >= 0)

@@ -888,12 +888,12 @@ void throwit(struct obj *obj,
 	obj->was_thrown = 1;
 	/* Split slip chance of cursed and greased objects; one that is both
 	 * has a 1-(6/7)^2 (or 13/49, or ~26%) chance of slipping.
-	 * Also, unskilled/restricted throwing has a 20% chance of slipping
+	 * Also, restricted throwing has a 20% chance of slipping
 	 * to discourage role-/race-atypical fighting.
 	 */
 	if (((obj->cursed && rnf(1,7)) ||
 	     (obj->greased && rnf(1,7)) ||
-	     (P_SKILL(weapon_type(obj)) <= P_UNSKILLED && rnf(1,5))) &&
+	     (P_SKILL(weapon_type(obj)) == P_ISRESTRICTED && rnf(1,5))) &&
 	    (u.dx || u.dy)) {
 	    boolean slipok = TRUE;
 	    if (ammo_and_launcher(obj, uwep))
@@ -1227,7 +1227,7 @@ int thitmonst(struct monst *mon, struct obj *obj, struct obj *ostack)
 	 * Certain items which don't in themselves do damage ignore tmp.
 	 * Distance and monster size affect chance to hit.
 	 */
-	tmp = -1 + Luck + find_mac(mon) + u.uhitinc +
+	tmp = -1 + Luck / 3 + find_mac(mon) + u.uhitinc +
 			maybe_polyd(youmonst.data->mlevel, u.ulevel);
 	if (ACURR(A_DEX) < 4) tmp -= 3;
 	else if (ACURR(A_DEX) < 6) tmp -= 2;
@@ -1353,10 +1353,12 @@ int thitmonst(struct monst *mon, struct obj *obj, struct obj *ostack)
 		exercise(A_DEX, TRUE);
 		if (detonate_obj(obj, ostack, uwep, bhitpos.x, bhitpos.y, TRUE))
 		    return 1;
-		/* projectiles other than magic stones
-		   sometimes disappear when thrown */
+		/* projectiles other than shuriken, crossbow bolts (half the
+		   time) and magic stones sometimes disappear when thrown */
 		if (objects[otyp].oc_skill < P_NONE &&
 				objects[otyp].oc_skill > -P_BOOMERANG &&
+				objects[otyp].oc_skill != -P_SHURIKEN &&
+				!(objects[otyp].oc_skill == -P_CROSSBOW && !rn2(2)) &&
 				!objects[otyp].oc_magic) {
 		    /* we were breaking 2/3 of everything unconditionally.
 		     * we still don't want anything to survive unconditionally,

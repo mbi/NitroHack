@@ -412,7 +412,7 @@ struct obj *create_oprop(struct level *lev, struct obj *otmp,
 	    otmp->oclass != ARMOR_CLASS)
 	    return otmp;
 
-	while (!otmp->oprops || !rn2(250)) {
+	while (!otmp->oprops || !rn2(5)) {
 	    int j = 1 << rn2(MAX_ITEM_PROPS); /* pick an item property */
 
 	    if (otmp->oprops & j) continue;
@@ -1825,7 +1825,6 @@ boolean artifact_hit(
 			  hittee, !spec_applies_ad_elec ? '.' : '!');
 		msg_printed = TRUE;
 	    }
-	    if (!rn2(5)) destroy_mitem(mdef, RING_CLASS, AD_ELEC, dmgptr);
 	    if (!rn2(5)) destroy_mitem(mdef, WAND_CLASS, AD_ELEC, dmgptr);
 	}
 

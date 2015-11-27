@@ -3,11 +3,12 @@
 #
 
 LEVEL: "nymph"
+MON_GENERATION: 90%, (1,'n'), (1,'l')
 MESSAGE: "You hear sounds of nature all around you."
+
 ROOM: "ordinary", unlit, random, random, (12,7)
 {
   LOOP [2] {
-    TRAP: "board", random
     LOOP[2] { TERRAIN: random, 'T' }
     TERRAIN: random, '{'
   }
@@ -26,7 +27,6 @@ ROOM: "ordinary", unlit, random, random, (12,7)
 ROOM: "ordinary", random, random, random, random
 {
   STAIR: random, up
-  TRAP: "board", random
   TERRAIN: random, 'T'
   TERRAIN: random, '{'
   OBJECT: random, random
@@ -36,17 +36,14 @@ ROOM: "ordinary", random, random, random, random
 ROOM: "ordinary", random, random, random, random
 {
   STAIR: random, down
-  TRAP: "board", random
   TERRAIN: random, 'T'
   TERRAIN: random, '{'
   OBJECT: random, random
-  TRAP: random, random
   MONSTER: 'n', random, hostile
 }
 
 ROOM: "ordinary", random, random, random, random
 {
-  TRAP: "board", random
   LOOP[2] { TERRAIN: random, 'T' }
   TERRAIN: random, '{'
   OBJECT: random, random
@@ -56,21 +53,17 @@ ROOM: "ordinary", random, random, random, random
 
 ROOM: "ordinary", random, random, random, random
 {
-  TRAP: "board", random
   LOOP[2] { TERRAIN: random, 'T' }
   TERRAIN: random, '{'
   OBJECT: random, random
-  TRAP: random, random
   MONSTER: 'n', random, hostile
 }
 
 ROOM: "ordinary", random, random, random, random
 {
-  TRAP: "board", random
   LOOP[2] { TERRAIN: random, 'T' }
   TERRAIN: random, '{'
   OBJECT: random, random
-  TRAP: random, random
   MONSTER: 'n', random, hostile
 }
 

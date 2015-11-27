@@ -238,6 +238,8 @@ static void m_initweap(struct level *lev, struct monst *mtmp)
 		    otmp = mksobj(lev, BRASS_LANTERN, TRUE, FALSE);
 		    mpickobj(mtmp, otmp);
 		    begin_burn(lev, otmp, FALSE);
+		} else if (mm == PM_NINJA) {
+		    if (!rn2(2)) m_initthrow(mtmp, SHURIKEN, 4);
 		}
 		break;
 
@@ -968,16 +970,14 @@ struct monst *makemon(const struct permonst *ptr,
 			    mtmp->minvis = TRUE;
 			}
 			break;
-		case S_EEL:
-			if (is_pool(lev, x, y))
-			    mtmp->mundetected = TRUE;
-			break;
 		case S_LEPRECHAUN:
 			mtmp->msleeping = 1;
 			break;
 		case S_JABBERWOCK:
-		case S_NYMPH:
 			if (rn2(5) && !u.uhave.amulet) mtmp->msleeping = 1;
+			break;
+		case S_NYMPH:
+			if (!u.uhave.amulet) mtmp->msleeping = 1;
 			break;
 		case S_ORC:
 			if (Race_if (PM_ELF)) mtmp->mpeaceful = FALSE;
@@ -1498,6 +1498,10 @@ int mongets(struct monst *mtmp, int otyp)
 		otmp->oerodeproof = TRUE;
 	    } else if (is_mplayer(mtmp->data) && is_sword(otmp)) {
 		otmp->spe = (3 + rn2(4));
+	    } else if (mtmp->data->mlet == S_GNOME) {
+		/* prevent player from getting tons of candles from gnomes */
+		otmp->quan = 1L;
+		otmp->owt = weight(otmp);
 	    }
 
 	    if (otmp->otyp == CANDELABRUM_OF_INVOCATION) {

@@ -549,7 +549,9 @@ static char *xname2(const struct obj *obj, boolean ignore_oquan)
 			struct fruit *f;
 
 			for (f=ffruit; f; f = f->nextf) {
-				if (f->fid == obj->spe) {
+				/* Object naming may occur due to bones trimming,
+				 * where fids may be negative. */
+				if (abs(f->fid) == obj->spe) {
 					strcat(buf, f->fname);
 					break;
 				}
@@ -2143,6 +2145,7 @@ static const struct alt_spellings {
 	{ "destroy armour", SCR_DESTROY_ARMOR },
 	{ "scroll of enchant armour", SCR_ENCHANT_ARMOR },
 	{ "scroll of destroy armour", SCR_DESTROY_ARMOR },
+	{ "scroll of teleport", SCR_TELEPORTATION },
 	{ "leather armour", LEATHER_ARMOR },
 	{ "studded leather armour", STUDDED_LEATHER_ARMOR },
 	{ "iron ball", HEAVY_IRON_BALL },
@@ -2157,6 +2160,7 @@ static const struct alt_spellings {
 	{ "kelp", KELP_FROND },
 	{ "eucalyptus", EUCALYPTUS_LEAF },
 	{ "lembas", LEMBAS_WAFER },
+	{ "wolfsbane", SPRIG_OF_WOLFSBANE },
 	{ "grapple", GRAPPLING_HOOK },
 	{ "helmet of opposite alignment", HELM_OF_OPPOSITE_ALIGNMENT },
 	{ "crystall ball", CRYSTAL_BALL },
@@ -3057,7 +3061,7 @@ typfnd:
 	if (cnt > 0 && objects[typ].oc_merge && oclass != SPBOOK_CLASS &&
 		(cnt < rnd(6) || wizard ||
 		 (cnt <= 7 && Is_candle(otmp)) ||
-		 (cnt <= 20 &&
+		 (cnt <= 100 &&
 		  ((oclass == WEAPON_CLASS && is_ammo(otmp))
 				|| typ == ROCK || is_missile(otmp)))))
 			otmp->quan = (long) cnt;

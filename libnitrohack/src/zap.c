@@ -3059,7 +3059,6 @@ static int zap_hit_mon(struct monst *mon, int type, int nd,
 			else mon->mblinded += rnd_tmp;
 		}
 		if (!rn2(3)) destroy_mitem(mon, WAND_CLASS, AD_ELEC, NULL);
-		if (!rn2(3)) destroy_mitem(mon, RING_CLASS, AD_ELEC, NULL);
 		break;
 	case ZT_POISON_GAS:
 		if (resists_poison(mon)) {
@@ -3836,7 +3835,6 @@ const char * const destroy_strings[] = {	/* also used in trap.c */
 	"boils and explodes", "boil and explode", "boiling potion",
 	"catches fire and burns", "catch fire and burn", "burning scroll",
 	"catches fire and burns", "catch fire and burn", "burning book",
-	"turns to dust and vanishes", "turn to dust and vanish", "",
 	"breaks apart and explodes", "break apart and explode", "exploding wand"
 };
 
@@ -3848,12 +3846,23 @@ boolean destroy_item(int osym, int dmgtyp)
 	int dindx;
 	const char *mult;
 	boolean seen_destroy = FALSE;
+	boolean cloak_protect;
+
+	/* elemental immunities prevent item destruction */
+	if ((dmgtyp == AD_COLD && FCold_resistance) ||
+	    (dmgtyp == AD_FIRE && FFire_resistance) ||
+	    (dmgtyp == AD_ELEC && FShock_resistance))
+	    return FALSE;
+
+	/* cloak of protection prevents 80% of item destruction */
+	cloak_protect = (uarmc && uarmc->otyp == CLOAK_OF_PROTECTION);
 
 	for (obj = invent; obj; obj = obj2) {
 	    obj2 = obj->nobj;
 	    if (obj->oclass != osym) continue; /* test only objs of type osym */
 	    if (obj->oartifact) continue; /* don't destroy artifacts */
 	    if (obj->in_use && obj->quan == 1) continue; /* not available */
+	    if (cloak_protect && rn2(5)) continue;
 	    xresist = skip = 0;
 	    dmg = dindx = 0;
 	    quan = 0L;
@@ -3901,18 +3910,12 @@ boolean destroy_item(int osym, int dmgtyp)
 			dmg = (dmg + 1) / 2;
 		    break;
 		case AD_ELEC:
-		    xresist = (FShock_resistance && obj->oclass != RING_CLASS);
+		    xresist = FShock_resistance;
 		    quan = obj->quan;
 		    switch(osym) {
-			case RING_CLASS:
-			    if (obj->otyp == RIN_SHOCK_RESISTANCE)
-				    { skip++; break; }
-			    dindx = 4;
-			    dmg = 0;
-			    break;
 			case WAND_CLASS:
 			    if (obj->otyp == WAN_LIGHTNING) { skip++; break; }
-			    dindx = 5;
+			    dindx = 4;
 			    dmg = rnd(10);
 			    break;
 			default:
@@ -3921,7 +3924,7 @@ boolean destroy_item(int osym, int dmgtyp)
 		    }
 		    /* Partial shock resistance only helps if full shock resistance
 		     * would have helped otherwise. */
-		    if (!skip && PShock_resistance && obj->oclass != RING_CLASS)
+		    if (!skip && PShock_resistance)
 			dmg = (dmg + 1) / 2;
 		    break;
 		default:
@@ -3931,7 +3934,7 @@ boolean destroy_item(int osym, int dmgtyp)
 	    if (!skip) {
 		if (obj->in_use) --quan; /* one will be used up elsewhere */
 		for (i = cnt = 0L; i < quan; i++)
-		    if (!rn2(3)) cnt++;
+		    if (!rn2(cloak_protect ? 15 : 3)) cnt++;
 
 		if (!cnt) continue;
 		seen_destroy = TRUE;
@@ -3978,15 +3981,27 @@ boolean destroy_mitem(struct monst *mtmp, int osym, int dmgtyp, int *dmgptr)
 	int dindx;
 	boolean vis;
 	boolean seen_destroy = FALSE;
+	boolean cloak_protect;
 
 	if (mtmp == &youmonst) {	/* this simplifies artifact_hit() */
 	    return destroy_item(osym, dmgtyp);
 	}
 
+	/* elemental immunities prevent item destruction */
+	if ((dmgtyp == AD_COLD && resists_cold(mtmp)) ||
+	    (dmgtyp == AD_FIRE && resists_fire(mtmp)) ||
+	    (dmgtyp == AD_ELEC && resists_elec(mtmp)))
+	    return FALSE;
+
+	/* cloak of protection prevents 80% of item destruction */
+	obj = which_armor(mtmp, W_ARMC);
+	cloak_protect = (obj && obj->otyp == CLOAK_OF_PROTECTION);
+
 	vis = canseemon(level, mtmp);
 	for (obj = mtmp->minvent; obj; obj = obj2) {
 	    obj2 = obj->nobj;
 	    if (obj->oclass != osym) continue; /* test only objs of type osym */
+	    if (cloak_protect && rn2(5)) continue;
 	    skip = 0;
 	    quan = 0L;
 	    dindx = 0;
@@ -4031,14 +4046,9 @@ boolean destroy_mitem(struct monst *mtmp, int osym, int dmgtyp, int *dmgptr)
 		case AD_ELEC:
 		    quan = obj->quan;
 		    switch(osym) {
-			case RING_CLASS:
-			    if (obj->otyp == RIN_SHOCK_RESISTANCE)
-				    { skip++; break; }
-			    dindx = 4;
-			    break;
 			case WAND_CLASS:
 			    if (obj->otyp == WAN_LIGHTNING) { skip++; break; }
-			    dindx = 5;
+			    dindx = 4;
 			    if (dmgptr) *dmgptr += 1;
 			    break;
 			default:
@@ -4052,7 +4062,7 @@ boolean destroy_mitem(struct monst *mtmp, int osym, int dmgtyp, int *dmgptr)
 	    }
 	    if (!skip) {
 		for (i = cnt = 0L; i < quan; i++)
-		    if (!rn2(3)) cnt++;
+		    if (!rn2(cloak_protect ? 15 : 3)) cnt++;
 
 		if (!cnt) continue;
 		if (vis) {

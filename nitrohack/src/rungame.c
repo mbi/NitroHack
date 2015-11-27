@@ -18,25 +18,34 @@ nh_bool get_gamedir(enum game_dirs dirtype, wchar_t *buf)
 {
     wchar_t *subdir;
     wchar_t appPath[MAX_PATH], nhPath[MAX_PATH];
-    
-    /* Get the location of "AppData\Roaming" (Vista, 7) or "Application Data" (XP).
-     * The returned Path does not include a trailing backslash. */
-    if (!SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appPath)))
-	return FALSE;
-    
+
+    if (override_userdir) {
+	_snwprintf(nhPath, MAX_PATH, L"%S", override_userdir);
+	nhPath[MAX_PATH - 1] = 0;
+    } else {
+	/*
+	 * Get the location of "AppData\Roaming" (Vista, 7) or "Application
+	 * Data" (XP).  The returned Path does not include a trailing
+	 * backslash.
+	 */
+	if (!SUCCEEDED(SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appPath)))
+	    return FALSE;
+	_snwprintf(nhPath, MAX_PATH, L"%s\\DynaHack", appPath);
+	nhPath[MAX_PATH - 1] = 0;
+	_wmkdir(nhPath);
+    }
+
     switch (dirtype) {
 	case CONFIG_DIR: subdir = L"\\"; break;
 	case SAVE_DIR:   subdir = L"\\save\\"; break;
 	case LOG_DIR:    subdir = L"\\log\\"; break;
 	case DUMP_DIR:   subdir = L"\\dumps\\"; break;
     }
-    
-    snwprintf(nhPath, MAX_PATH, L"%s\\DynaHack", appPath);
-    _wmkdir(nhPath);
-    
-    snwprintf(buf, BUFSZ, L"%s%s", nhPath, subdir);
+
+    _snwprintf(buf, BUFSZ, L"%s%s", nhPath, subdir);
+    buf[BUFSZ - 1] = 0;
     _wmkdir(buf);
-    
+
     return TRUE;
 }
 
@@ -46,28 +55,32 @@ nh_bool get_gamedir(enum game_dirs dirtype, char *buf)
 {
     char *envval, *subdir;
     mode_t mask;
-    
+
     switch (dirtype) {
 	case CONFIG_DIR: subdir = ""; break;
 	case SAVE_DIR:   subdir = "save/"; break;
 	case LOG_DIR:    subdir = "log/"; break;
 	case DUMP_DIR:   subdir = "dumps/"; break;
     }
-    
-    /* look in regular location */
-    envval = getenv("XDG_CONFIG_HOME");
-    if (envval)
-	snprintf(buf, BUFSZ, "%s/DynaHack/%s", envval, subdir);
-    else {
-	envval = getenv("HOME");
-	if (!envval) /* HOME not set? just give up... */
-	    return FALSE;
-	snprintf(buf, BUFSZ, "%s/.config/DynaHack/%s", envval, subdir);
+
+    if (override_userdir && getgid() == getegid()) {
+	snprintf(buf, BUFSZ, "%s/%s", override_userdir, subdir);
+    } else {
+	/* look in regular location */
+	envval = getenv("XDG_CONFIG_HOME");
+	if (envval) {
+	    snprintf(buf, BUFSZ, "%s/DynaHack/%s", envval, subdir);
+	} else {
+	    envval = getenv("HOME");
+	    if (!envval) /* HOME not set? just give up... */
+		return FALSE;
+	    snprintf(buf, BUFSZ, "%s/.config/DynaHack/%s", envval, subdir);
+	}
     }
-    
+
     mask = umask(0);
     if (mkdir(buf, 0755) == -1 && errno != EEXIST) {
-	/* try to create the parent directory too. This ist the only problem we
+	/* try to create the parent directory too. This is the only problem we
 	 * can fix here - permission problems etc. all requre user intervention */
 	char dirbuf[BUFSZ], *basedir;
 	strcpy(dirbuf, buf);
@@ -80,7 +93,7 @@ nh_bool get_gamedir(enum game_dirs dirtype, char *buf)
 	}
     }
     umask(mask);
-    
+
     return TRUE;
 }
 
@@ -140,19 +153,22 @@ static void game_ended(int status, fnchar *filename)
     /* dirname and basename may modify the input string, depending on the system */
     strncpy(fncopy, filename, sizeof(fncopy));
     bp = dirname(fncopy);
-    
+
     get_gamedir(SAVE_DIR, savedir);
     savedir[strlen(savedir)-1] = '\0'; /* remove the trailing '/' */
     if (strcmp(bp, savedir) != 0)
 	return; /* file was not in savedir, so don't touch it */
-    
+
     get_gamedir(LOG_DIR, logname);
     strncpy(fncopy, filename, sizeof(fncopy));
+    fncopy[sizeof(fncopy) - 1] = '\0';
     fname = basename(fncopy);
     strncat(logname, fname, sizeof(logname)-1);
-    
-    /* don't care about errors: rename is nice to have, not essential */
-    rename(filename, logname);
+
+    if (rename(filename, logname) == 0) {
+	/* loosen permissions for preserved save log files */
+	chmod(logname, 0644);
+    }
 #else
     bp = wcsrchr(filename, L'\\');
     get_gamedir(SAVE_DIR, savedir);
@@ -188,6 +204,7 @@ void rungame(nh_bool tutorial)
 	return;
     
     strncpy(plname, settings.plname, PL_NSIZ);
+    plname[PL_NSIZ - 1] = 0;
     /* The player name is set to "wizard" (again) in nh_start_game, so setting
      * it here just prevents wizmode player from being asked for a name. */
     if (ui_flags.playmode == MODE_WIZARD)
@@ -195,14 +212,20 @@ void rungame(nh_bool tutorial)
 
     nh_root_plselection_prompt(chardesc, QBUFSZ - 1, role, race, gend, align);
     snprintf(nameprompt, QBUFSZ, "You are a %s.  What is your name?", chardesc);
-    while (!plname[0])
+    while (!plname[0]) {
 	curses_getline(nameprompt, plname);
+	if (strlen(plname) >= PL_NSIZ) {
+	    curses_msgwin("That name is too long.");
+	    plname[0] = 0;
+	}
+    }
     if (plname[0] == '\033') /* canceled */
 	return;
 
     t = (long)time(NULL);
 #if defined(WIN32)
-    snwprintf(filename, 1024, L"%ls%ld_%hs.nhgame", savedir, t, plname);
+    _snwprintf(filename, 1024, L"%ls%ld_%hs.nhgame", savedir, t, plname);
+    filename[1023] = 0;
 #else
     snprintf(filename, 1024, "%s%ld_%s.nhgame", savedir, t, plname);
 #endif
@@ -305,6 +328,7 @@ wchar_t **list_gamefiles(wchar_t *dir, int *count)
 	    continue; /* too small to be valid */
 
 	_snwprintf(fullname, 1024, L"%s%s", dir, find_data[*count].cFileName);
+	fullname[1023] = 0;
 	fd = _wopen(fullname, O_RDWR, _S_IREAD | _S_IWRITE);
 	if (fd == -1)
 	    continue;
@@ -326,6 +350,7 @@ wchar_t **list_gamefiles(wchar_t *dir, int *count)
     filenames = malloc(*count * sizeof(wchar_t*));
     for (i = 0; i < *count; i++) {
 	_snwprintf(fullname, 1024, L"%s%s", dir, find_data[i].cFileName);
+	fullname[1023] = 0;
 	filenames[i] = _wcsdup(fullname);
     }
     free(find_data);

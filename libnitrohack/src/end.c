@@ -78,25 +78,25 @@ int done2(void)
 }
 
 
-void done_in_by(struct monst *mtmp)
+/* stores a killer string fitting the monster in buf and returns killer format */
+int done_in_by_format(const struct monst *mtmp, char *buf)
 {
-	char buf[BUFSZ];
+	int kfmt;
 	boolean distorted = (boolean)(Hallucination && canspotmon(level, mtmp));
 
-	pline("You die...");
 	buf[0] = '\0';
-	killer_format = KILLED_BY_AN;
+	kfmt = KILLED_BY_AN;
 	/* "killed by the high priest of Crom" is okay, "killed by the high
 	   priest" alone isn't */
 	if ((mtmp->data->geno & G_UNIQ) != 0 && !(mtmp->data == &mons[PM_HIGH_PRIEST] && !mtmp->ispriest)) {
 	    if (!type_is_pname(mtmp->data))
 		strcat(buf, "the ");
-	    killer_format = KILLED_BY;
+	    kfmt = KILLED_BY;
 	}
 	/* _the_ <invisible> <distorted> ghost of Dudley */
 	if (mtmp->data == &mons[PM_GHOST] && mtmp->mnamelth) {
 		strcat(buf, "the ");
-		killer_format = KILLED_BY;
+		kfmt = KILLED_BY;
 	}
 	if (mtmp->minvis)
 		strcat(buf, "invisible ");
@@ -109,12 +109,12 @@ void done_in_by(struct monst *mtmp)
 	} else if (mtmp->isshk) {
 		sprintf(eos(buf), "%s %s, the shopkeeper",
 			(mtmp->female ? "Ms." : "Mr."), shkname(mtmp));
-		killer_format = KILLED_BY;
+		kfmt = KILLED_BY;
 	} else if (mtmp->ispriest || mtmp->isminion) {
 		/* m_monnam() suppresses "the" prefix plus "invisible", and
 		   it overrides the effect of Hallucination on priestname() */
-		killer = m_monnam(mtmp);
-		strcat(buf, killer);
+		const char *killer_mon = m_monnam(mtmp);
+		strcat(buf, killer_mon);
 	} else {
 		strcat(buf, mons_mname(mtmp->data));
 		if (mtmp->mnamelth)
@@ -127,7 +127,17 @@ void done_in_by(struct monst *mtmp)
 	    else
 		strcat(buf, ", while helpless");
 	}
+
+	return kfmt;
+}
+
+
+void done_in_by(const struct monst *mtmp)
+{
+	char buf[BUFSZ];
+	killer_format = done_in_by_format(mtmp, buf);
 	killer = buf;
+
 	if (mtmp->data->mlet == S_WRAITH)
 		u.ugrave_arise = PM_WRAITH;
 	else if (mtmp->data->mlet == S_MUMMY && urace.mummynum != NON_PM)
@@ -139,11 +149,12 @@ void done_in_by(struct monst *mtmp)
 	if (u.ugrave_arise >= LOW_PM &&
 				(mvitals[u.ugrave_arise].mvflags & G_GENOD))
 		u.ugrave_arise = NON_PM;
+
+	pline("You die...");
 	if (touch_petrifies(mtmp->data))
 		done(STONING);
 	else
 		done(DIED);
-	return;
 }
 
 
@@ -487,8 +498,8 @@ static long calc_score(int how)
 	u.urscore += 50L * (long)(deepest - 1);
 	if (deepest > 20)
 	    u.urscore += 1000L * (long)((deepest > 30) ? 10 : deepest - 20);
-	if (how == ASCENDED || DEFIED) u.urscore *= 2L;
-	
+	if (how == ASCENDED || how == DEFIED) u.urscore *= 2L;
+
 	return umoney;
 }
 
@@ -690,6 +701,7 @@ void done(int how)
 	boolean bones_ok;
 	struct obj *corpse = NULL;
 	long umoney;
+	const char *dumpname;
 
 	if (check_survival(how, killbuf))
 	    return;
@@ -786,7 +798,7 @@ void done(int how)
 	if (flags.end_disclose != DISCLOSE_NO_WITHOUT_PROMPT)
 	    disclose(how, taken);
 
-	begin_dump(how);
+	dumpname = begin_dump(how);
 	dump_disclose(how);
 	
 	/* finish_paybill should be called after disclosure but before bones */
@@ -812,8 +824,8 @@ void done(int how)
 
 	/* generate a topten entry for this game.
 	   update_topten does not display anything. */
-	update_topten(how);
-	
+	update_topten(how, dumpname ? dumpname : "");
+
 	terminate();
 }
 

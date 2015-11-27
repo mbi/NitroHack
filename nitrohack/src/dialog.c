@@ -23,10 +23,8 @@ WINDOW *newdialog(int height, int width)
     win = newwin(height, width, starty, startx);
     keypad(win, TRUE);
     meta(win, TRUE);
-    wattron(win, FRAME_ATTRS);
-    box(win, 0 , 0);
-    wattroff(win, FRAME_ATTRS);
-    
+    nh_box_wborder(win, FRAME_ATTRS);
+
     return win;
 }
 
@@ -91,7 +89,7 @@ char curses_yn_function(const char *query, const char *resp, char def)
     if (def)
 	sprintf(prompt + strlen(prompt), "(%c) ", def);
 
-    wrap_text(COLNO - 5, prompt, &output_count, &output);
+    ui_wrap_text(COLNO - 5, prompt, &output_count, &output);
     width = strlen(prompt) + 5;
     if (width > COLNO) width = COLNO;
     height = output_count + 2;
@@ -99,7 +97,7 @@ char curses_yn_function(const char *query, const char *resp, char def)
     for (i = 0; i < output_count; i++)
 	mvwprintw(win, i + 1, 2, output[i]);
     wrefresh(win);
-    free_wrap(output);
+    ui_free_wrap(output);
 
     do {
 	key = tolower(nh_wgetch(win));
@@ -143,9 +141,7 @@ char curses_query_key(const char *query, int *count)
 
     while (1) {
 	if (count) {
-	    wattron(win, FRAME_ATTRS);
-	    box(win, 0, 0);
-	    wattroff(win, FRAME_ATTRS);
+	    nh_box_wborder(win, FRAME_ATTRS);
 	    if (hascount)
 		mvwprintw(win, getmaxy(win) - 1, 2, "Count: %d", cnt);
 	}

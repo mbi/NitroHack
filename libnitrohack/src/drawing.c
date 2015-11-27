@@ -39,7 +39,7 @@ const char * const warnexplain[] = {
 
 
 const struct nh_symdef warnsyms[WARNCOUNT] = {
-	{'0', "warn1", CLR_WHITE},  	/* white warning  */
+	{'0', "warn1", CLR_ORANGE},  	/* orange warning  */
 	{'1', "warn2", CLR_RED},	/* pink warning   */
 	{'2', "warn3", CLR_RED},	/* red warning    */
 	{'3', "warn4", CLR_RED},	/* ruby warning   */
@@ -123,7 +123,8 @@ const char * const trapexplain[] = {
 /*60*/	"statue trap",
 	"magic trap",
 	"anti-magic field",
-	"polymorph trap"
+	"polymorph trap",
+	"shuriken trap",
 };
 
 /*
@@ -204,7 +205,8 @@ static const struct nh_symdef trapsyms[] = {
 	{'^', "statue trap",		CLR_GRAY},
 /*20*/	{'^', "magic trap",		HI_ZAP},
 	{'^', "anti-magic field",	HI_ZAP},
-	{'^', "polymorph trap",		CLR_BRIGHT_GREEN}
+	{'^', "polymorph trap",		CLR_BRIGHT_GREEN},
+	{'^', "shuriken trap",		HI_METAL},
 };
 
 

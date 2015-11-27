@@ -18,7 +18,7 @@ static char msglines[MAX_MSGLINES][COLNO+1];
 static int curline;
 static int start_of_turn_curline = -1;
 static int last_redraw_curline;
-static nh_bool stopprint;
+static nh_bool skip_more;
 static int prevturn, action, prevaction;
 
 static void newline(void);
@@ -128,13 +128,13 @@ static void prune_messages(int maxturn)
 	} else {
 	    int j, output_count;
 	    char **output;
-	    wrap_text(COLNO, msg, &output_count, &output);
+	    ui_wrap_text(COLNO, msg, &output_count, &output);
 	    for (j = 0; j < output_count; j++) {
-		if (strlen(msglines[curline]) > 0)
+		if (msglines[curline][0])
 		    newline();
 		strcpy(msglines[curline], output[j]);
 	    }
-	    free_wrap(output);
+	    ui_free_wrap(output);
 	}
     }
 }
@@ -179,6 +179,9 @@ static void more(void)
     int cursx, cursy;
     attr_t attr = A_NORMAL;
 
+    if (skip_more)
+	return;
+
     draw_msgwin();
 
     if (settings.standout)
@@ -201,16 +204,14 @@ static void more(void)
 	wattroff(msgwin, attr);
 	wrefresh(msgwin);
     }
-    
+
     getyx(msgwin, cursy, cursx);
-    wtimeout(msgwin, 666); /* enable blinking */
     do {
 	key = nh_wgetch(msgwin);
 	draw_map(player.x, player.y);
 	wmove(msgwin, cursy, cursx);
 	doupdate();
     } while (key != '\n' && key != '\r' && key != ' ' && key != KEY_ESC);
-    wtimeout(msgwin, -1);
 
     /* Clean up after the --More--. */
     if (getmaxy(msgwin) == 1) {
@@ -222,7 +223,7 @@ static void more(void)
     draw_msgwin();
 
     if (key == KEY_ESC)
-	stopprint = TRUE;
+	skip_more = TRUE;
 
     /* we want to --more-- by screenfuls, not lines */
     last_redraw_curline = curline;
@@ -241,7 +242,7 @@ void new_action(void)
 static void curses_print_message_core(int turn, const char *msg, nh_bool canblock)
 {
     int hsize, vsize, maxlen;
-    nh_bool died;
+    nh_bool use_current_line, died;
 
     if (!msghistory)
 	alloc_hist_array();
@@ -254,16 +255,13 @@ static void curses_print_message_core(int turn, const char *msg, nh_bool canbloc
 
     if (action > prevaction) {
 	/* re-enable output if it was stopped and start a new line */
-	stopprint = FALSE;
+	skip_more = FALSE;
 	newline();
     }
     prevturn = turn;
     prevaction = action;
 
     store_message(turn, msg);
-
-    if (stopprint)
-	return;
 
     /*
      * generally we want to put as many messages on one line as possible to
@@ -278,8 +276,13 @@ static void curses_print_message_core(int turn, const char *msg, nh_bool canbloc
     if (maxlen >= COLNO) maxlen = COLNO - 1;
     if (vsize == 1) maxlen -= 8; /* for "--More--" */
 
+    if (settings.msg_per_line) {
+	use_current_line = !msglines[curline][0];
+    } else {
+	use_current_line = (strlen(msglines[curline]) + strlen(msg) + 2 < maxlen);
+    }
     died = !strncmp(msg, "You die", 7);
-    if (strlen(msglines[curline]) + strlen(msg) + 2 < maxlen && !died) {
+    if (use_current_line && !died) {
 	if (msglines[curline][0])
 	    strcat(msglines[curline], "  ");
 	strcat(msglines[curline], msg);
@@ -287,10 +290,10 @@ static void curses_print_message_core(int turn, const char *msg, nh_bool canbloc
 	int i, output_count;
 	char **output;
 
-	wrap_text(maxlen, msg, &output_count, &output);
+	ui_wrap_text(maxlen, msg, &output_count, &output);
 
 	for (i = 0; i < output_count; i++) {
-	    if (strlen(msglines[curline]) > 0) {
+	    if (msglines[curline][0]) {
 		/*
 		 * If we would scroll a message off the screen that
 		 * the user hasn't had a chance to look at this redraw,
@@ -311,11 +314,10 @@ static void curses_print_message_core(int turn, const char *msg, nh_bool canbloc
 		else
 		    newline();
 	    }
-	    if (stopprint) break; /* may get set in more() */
 	    strcpy(msglines[curline], output[i]);
 	}
 
-	free_wrap(output);
+	ui_free_wrap(output);
     }
 
     draw_msgwin();
@@ -400,7 +402,7 @@ void doprev_message(void)
 	    int output_count, j;
 	    char **output;
 
-	    wrap_text(hist_msg_width - maxturn_width, msg, &output_count, &output);
+	    ui_wrap_text(hist_msg_width - maxturn_width, msg, &output_count, &output);
 
 	    if (turn != prevturn)
 		snprintf(buf, MSGLEN+1, "T:%*d\t%s", maxturn_width, turn, output[0]);
@@ -413,7 +415,7 @@ void doprev_message(void)
 		add_menu_txt(items, size, icount, buf, MI_TEXT);
 	    }
 
-	    free_wrap(output);
+	    ui_free_wrap(output);
 	}
 
 	prevturn = turn;
@@ -455,7 +457,7 @@ void cleanup_messages(void)
  * The memory for both the output strings and the output array is obtained via
  * malloc and should be freed when no longer needed.
  */
-void wrap_text(int width, const char *input, int *output_count, char ***output)
+void ui_wrap_text(int width, const char *input, int *output_count, char ***output)
 {
     const int min_width = 20, max_wrap = 20;
 
@@ -505,7 +507,7 @@ void wrap_text(int width, const char *input, int *output_count, char ***output)
     *output_count = outcount;
 }
 
-void free_wrap(char **wrap_output)
+void ui_free_wrap(char **wrap_output)
 {
     const int max_wrap = 20;
     int idx;

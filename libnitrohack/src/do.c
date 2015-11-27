@@ -174,27 +174,6 @@ boolean flooreffects(struct obj *obj, int x, int y, const char *verb)
 		bury_objs(x, y);
 		newsym(x,y);
 		return TRUE;
-	} else if (obj->otyp == AMULET_OF_YENDOR &&
-		   (obj->cursed ? rnf(1,2) :
-		    obj->blessed ? rnf(1,16) : rnf(1,4))) {
-		/* prevent recursive call of teleportation through flooreffects */
-		if (!obj->orecursive && distu(x, y) < 9) {
-			if (Blind) {
-				You_hear("%s!", Hallucination ?
-						"nothing special happening" :
-						"something teleporting");
-			} else if (cansee(x, y)) {
-				pline("Right after touching the %s the %s teleports away!",
-				      surface(x, y),
-				      Hallucination ? "teddy bear" : "amulet");
-			}
-			obj->orecursive = TRUE;
-			rloco(obj);
-			obj->orecursive = FALSE;
-			return TRUE;
-		} else {
-			return FALSE;
-		}
 	} else if (is_lava(level, x, y)) {
 		return fire_damage(obj, FALSE, FALSE, x, y);
 	} else if (is_pool(level, x, y) || is_swamp(level, x, y)) {
@@ -669,7 +648,7 @@ void dropy(struct obj *obj)
 		    }
 		}
 	    }
-	} else {
+	} else  {
 	    place_object(obj, level, u.ux, u.uy);
 	    if (obj == uball)
 		drop_ball(u.ux, u.uy, 0, 0);

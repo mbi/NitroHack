@@ -144,6 +144,7 @@ extern int get_command_idx(const char *cmd);
 extern int do_command(int cmd, int, boolean, struct nh_cmd_arg*);
 extern void enlightenment(int);
 extern void show_conduct(int);
+extern unsigned long encode_conduct(void);
 extern boolean dir_to_delta(enum nh_direction dir, schar *dx, schar *dy, schar *dz);
 extern int xytod(schar, schar);
 extern void dtoxy(coord *,int);
@@ -409,7 +410,7 @@ extern boolean hurtle_step(void *, int, int);
 
 /* ### dump.c ### */
 
-extern void begin_dump(int how);
+extern const char *begin_dump(int how);
 extern void end_dump(int how, char *kilbuf, char *pbuf, long umoney);
 extern void dump_catch_menus(boolean intercept);
 
@@ -500,7 +501,8 @@ extern void reset_food(void);
 extern void NORETURN terminate(void);
 extern void panic(const char *,...);
 extern int done2(void);
-extern void done_in_by(struct monst *);
+extern int done_in_by_format(const struct monst *, char *);
+extern void done_in_by(const struct monst *);
 extern void done(int);
 extern int num_vanquished(void);
 extern int num_genocides(void);
@@ -762,6 +764,7 @@ extern void obj_split_light_source(struct obj *, struct obj *);
 extern void obj_merge_light_sources(struct obj *,struct obj *);
 extern int candle_light_range(struct obj *);
 extern int wiz_light_sources(void);
+extern void validate_light_sources(void);
 
 /* ### lock.c ### */
 
@@ -1704,6 +1707,7 @@ extern void obj_stop_timers(struct obj *);
 extern boolean obj_is_local(struct obj *);
 extern void transfer_timers(struct level *oldlev, struct level *newlev,
 			    unsigned int obj_id);
+extern void validate_timers(void);
 extern void save_timers(struct memfile *mf, struct level *lev, int range);
 extern void free_timers(struct level *lev);
 extern void restore_timers(struct memfile *mf, struct level *lev, int range,
@@ -1713,7 +1717,8 @@ extern int wiz_timeout_queue(void);
 
 /* ### topten.c ### */
 
-extern void update_topten(int how);
+extern void munge_xlstring(char *dest, const char *src, int n);
+extern void update_topten(int how, const char *dumpname);
 extern struct obj *tt_oname(struct obj *);
 extern void topten_level_name(int dnum, int dlev, char *outbuf);
 extern void write_log_toptenentry(int fd, int how);

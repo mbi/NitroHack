@@ -345,8 +345,6 @@ struct obj *mksobj(struct level *lev, int otyp, boolean init, boolean artif)
 	otmp->where = OBJ_FREE;
 	otmp->olev = lev;
 	otmp->dknown = strchr(dknowns, let) ? 0 : 1;
-	if (otmp->otyp == AMULET_OF_YENDOR)
-		 otmp->orecursive = FALSE;
 	if ((otmp->otyp >= ELVEN_SHIELD && otmp->otyp <= ORCISH_SHIELD) ||
 			otmp->otyp == SHIELD_OF_REFLECTION)
 		otmp->dknown = 0;
@@ -623,7 +621,7 @@ void start_corpse_timeout(struct obj *body)
 	short action;
 
 #define TAINT_AGE (50L)		/* age when corpses go bad */
-#define TROLL_REVIVE_CHANCE 37	/* 1/37 chance for 50 turns ~ 75% chance */
+#define REVIVE_CHANCE 37	/* 1/37 chance for 50 turns ~ 75% chance */
 #define ROT_AGE (250L)		/* age when corpses rot away */
 
 	/* lizards and lichen don't rot or revive */
@@ -647,12 +645,16 @@ void start_corpse_timeout(struct obj *body)
 		for (when = 12L; when < 500L; when++)
 		    if (!rn2(3)) break;
 
-	} else if (mons[body->corpsenm].mlet == S_TROLL && !body->norevive) {
+	} else if (!body->norevive &&
+		   ((is_zombie(&mons[body->corpsenm]) &&
+		     /* Priests have a chance to put down zombies for good. */
+		     !(Role_if(PM_PRIEST) && !rn2(2))) ||
+		    mons[body->corpsenm].mlet == S_TROLL)) {
 		long age;
 		struct monst *mtmp = get_mtraits(body, FALSE);
 		if (mtmp && !mtmp->mcan) {
 		    for (age = 2; age <= TAINT_AGE; age++) {
-			if (!rn2(TROLL_REVIVE_CHANCE)) {	/* troll revives */
+			if (!rn2(REVIVE_CHANCE)) {	/* monster revives */
 			    action = REVIVE_MON;
 			    when = age;
 			    break;
@@ -660,7 +662,7 @@ void start_corpse_timeout(struct obj *body)
 		    }
 		}
 	}
-	
+
 	if (body->norevive) body->norevive = 0;
 	start_timer(body->olev, when, TIMER_OBJECT, action, body);
 }
@@ -843,6 +845,7 @@ struct obj *mkgold(long amount, struct level *lev, int x, int y)
 #define special_corpse(num)  (((num) == PM_LIZARD)		\
 				|| ((num) == PM_LICHEN)		\
 				|| (is_rider(&mons[num]))	\
+				|| (is_zombie(&mons[num]))	\
 				|| (mons[num].mlet == S_TROLL))
 
 /*

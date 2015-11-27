@@ -84,10 +84,10 @@ struct nh_option_desc curses_options[] = {
     {"name", "name for new characters (blank = ask)", OPTTYPE_STRING, {NULL}},
     {"classic_status", "use classic NetHack layout for status lines", OPTTYPE_BOOL, { FALSE }},
     {"darkgray", "try to show 'black' as dark gray instead of dark blue", OPTTYPE_BOOL,
-#if defined(__linux__)
+#if defined(__linux__) || defined(WIN32)
 	{ VTRUE }
 #else
-	/* Windows and default OS X terminal config have problems with darkgray */
+	/* default OS X terminal config has problems with darkgray */
 	{ FALSE }
 #endif
     },
@@ -100,7 +100,7 @@ struct nh_option_desc curses_options[] = {
 #endif
     },
     {"darkroom", "dim colors for out-of-sight spaces", OPTTYPE_BOOL,
-#if defined(__linux__)
+#if defined(__linux__) || defined(WIN32)
 	{ VTRUE }
 #else
 	/* darkroom tends to look awful without working darkgray */
@@ -115,11 +115,12 @@ struct nh_option_desc curses_options[] = {
     {"hilite_peaceful", "highlight peaceful monsters", OPTTYPE_BOOL, { VTRUE }},
     {"hilite_pet", "highlight your pet", OPTTYPE_BOOL, { VTRUE }},
     {"invweight", "show item weights in the inventory", OPTTYPE_BOOL, { VTRUE }},
-    {"keymap", "alter the key to command mapping", OPTTYPE_KEYMAP, {0}},
+    {"keymap", "alter the key to command mapping", (enum nh_opttype)OPTTYPE_KEYMAP, {0}},
     {"mapcolors", "use thematic colors for special map regions", OPTTYPE_BOOL, { VTRUE }},
     {"menu_headings", "display style for menu headings", OPTTYPE_ENUM, {(void*)A_REVERSE}},
     {"msgheight", "message window height (0 = auto)", OPTTYPE_INT, {0}},
     {"msghistory", "number of messages saved for prevmsg", OPTTYPE_INT, {(void*)256}},
+    {"msg_per_line", "show each message on a new line", OPTTYPE_BOOL, { FALSE }},
     {"optstyle", "option menu display style", OPTTYPE_ENUM, {(void*)OPTSTYLE_FULL}},
     {"repeat_num_auto", "number keys automatically show repeat count prompt", OPTTYPE_BOOL, { VTRUE }},
     {"scores_own", "show all your own scores in the list", OPTTYPE_BOOL, { FALSE }},
@@ -150,6 +151,7 @@ struct nh_boolopt_map boolopt_map[] = {
     {"hilite_pet", &settings.hilite_pet},
     {"invweight", &settings.invweight},
     {"mapcolors", &settings.mapcolors},
+    {"msg_per_line", &settings.msg_per_line},
     {"repeat_num_auto", &settings.repeat_num_auto},
     {"scores_own", &settings.end_own},
     {"showexp", &settings.showexp},
@@ -1155,7 +1157,7 @@ static void read_config_line(char* line)
 
     comment = strchr(line, '#');
     if (comment)
-	comment = '\0';
+	*comment = '\0';
     delim = strchr(line, '=');
     if (!delim)
 	return; /* could whine about junk chars in the config, but why bother */
@@ -1281,19 +1283,23 @@ void read_ui_config(void)
 static FILE *open_config_file(fnchar *filename)
 {
     FILE *fp;
-    
+
     fp = fopen(filename, "w");
     if (!fp && (errno == ENOTDIR || errno == ENOENT)) {
 	fp = fopen(filename, "w");
     }
-    
+
     if (!fp) {
 	fprintf(stderr, "could not open " FN_FMT ": %s", filename, strerror(errno));
 	return NULL;
     }
-    
+
+#ifdef UNIX
+    chmod(filename, 0644);
+#endif
+
     fprintf(fp, "# note: this file is rewritten whenever options are changed ingame\n");
-    
+
     return fp;
 }
 

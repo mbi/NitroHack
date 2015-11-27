@@ -230,7 +230,7 @@ schar find_roll_to_hit(struct monst *mtmp)
 	schar tmp;
 	int tmp2, wepskill, twowepskill, useskill;
 
-	tmp = 1 + abon() + find_mac(mtmp) + u.uhitinc +
+	tmp = 1 + Luck / 3 + abon() + find_mac(mtmp) + u.uhitinc +
 		maybe_polyd(youmonst.data->mlevel, u.ulevel);
 
 	check_caitiff(mtmp);
@@ -1628,8 +1628,6 @@ int damageum(struct monst *mdef, const struct attack *mattk)
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
 		}
-		/* only rings damage resistant players in destroy_item */
-		destroy_mitem(mdef, RING_CLASS, AD_ELEC, &tmp);
 		break;
 	    case AD_ACID:
 		if (resists_acid(mdef)) tmp = 0;
@@ -1710,6 +1708,10 @@ int damageum(struct monst *mdef, const struct attack *mattk)
 			if (mdef->mhp < xtmp) xtmp = mdef->mhp;
 			if (maybe_polyd(is_vampiric(youmonst.data),
 					Race_if(PM_VAMPIRE)) &&
+			    /* Player vampires are smart enough to not feed
+			       while biting if they might have trouble getting
+			       it down. */
+			    u.uhunger <= 1420 &&
 			    mattk->aatyp == AT_BITE &&
 			    has_blood(pd)) {
 				/* For the life of a creature is in the blood
@@ -2001,7 +2003,10 @@ static int gulpum(struct monst *mdef, const struct attack *mattk)
 	 * after exactly 1 round of attack otherwise.  -KAA
 	 */
 
-	if (mdef->data->msize >= MZ_HUGE) return 0;
+	if (mdef->data->msize >= MZ_HUGE) {
+	    pline("%s is too large to be engulfed.", Monnam(mdef));
+	    return 0;
+	}
 
 	if (u.uhunger < 1500 && !u.uswallow) {
 	    for (otmp = mdef->minvent; otmp; otmp = otmp->nobj)
@@ -2236,11 +2241,16 @@ use_weapon:
 			/* [ALI] Vampires are also smart. They avoid biting
 			   monsters if doing so would be fatal */
 			if (i > 0 && is_vampire(youmonst.data) &&
+			    /* ... unless they are impaired */
+			    (!Stunned && !Confusion && !Hallucination) &&
 			    (is_rider(mon->data) ||
 			     touch_disintegrates(mon->data) ||
 			     touch_petrifies(mon->data) ||
 			     mon->data == &mons[PM_MEDUSA] ||
-			     mon->data == &mons[PM_GREEN_SLIME]))
+			     mon->data == &mons[PM_GREEN_SLIME] ||
+			     /* ... or in the case of shades, do no damage and
+			        produce confusing messages. */
+			     mon->data == &mons[PM_SHADE]))
 			    break;
 		case AT_KICK:
 		case AT_STNG:
@@ -2253,6 +2263,21 @@ use_weapon:
 			    break;
 		case AT_TENT:
 			if (i==0 && uwep && (youmonst.data->mlet==S_LICH)) goto use_weapon;
+			/* Mind flayers are also smart. They avoid biting
+			   monsters if doing so would be fatal. */
+			if ((youmonst.data == &mons[PM_MIND_FLAYER] ||
+			     youmonst.data == &mons[PM_MASTER_MIND_FLAYER]) &&
+			    /* ... unless they are impaired */
+			    (!Stunned && !Confusion && !Hallucination) &&
+			    (is_rider(mon->data) ||
+			     touch_disintegrates(mon->data) ||
+			     touch_petrifies(mon->data) ||
+			     mon->data == &mons[PM_MEDUSA] ||
+			     mon->data == &mons[PM_GREEN_SLIME] ||
+			     /* ... or in the case of shades, do no damage and
+			        produce confusing messages. */
+			     mon->data == &mons[PM_SHADE]))
+			    break;
 			if ((dhit = (tmp > rnd(20) || u.uswallow)) != 0) {
 			    int compat;
 
@@ -2477,13 +2502,10 @@ int passive(struct monst *mon, boolean mhit, int malive, uchar aatyp)
 			(protector == W_ARMF && !uarmf) ||
 			(protector == W_ARMH && !uarmh) ||
 			(protector == (W_ARMC|W_ARMG) && (!uarmc || !uarmg))) {
-		    if (!Stone_resistance &&
-			    !(poly_when_stoned(youmonst.data) &&
-				polymon(PM_STONE_GOLEM))) {
-			pline("You turn to stone...");
-			done_in_by(mon);
+		    char kbuf[BUFSZ];
+		    (void)done_in_by_format(mon, kbuf);
+		    if (delayed_petrify(NULL, kbuf))
 			return 2;
-		    }
 		}
 	    }
 	    break;

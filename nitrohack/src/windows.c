@@ -46,20 +46,60 @@ struct nh_window_procs curses_windowprocs = {
 
 /*----------------------------------------------------------------------------*/
 
+static void define_extra_keypad_keys(void)
+{
+#if defined(NCURSES_VERSION)
+    /* Recognize application keypad mode escape sequences, enabled by default
+     * in PuTTY, so numpad keys work out-of-the-box for it. */
+    define_key("\033Oq", KEY_C1);	/* numpad 1 */
+    define_key("\033Or", KEY_DOWN);	/* numpad 2 */
+    define_key("\033Os", KEY_C3);	/* numpad 3 */
+    define_key("\033Ot", KEY_LEFT);	/* numpad 4 */
+    define_key("\033Ou", KEY_B2);	/* numpad 5 */
+    define_key("\033Ov", KEY_RIGHT);	/* numpad 6 */
+    define_key("\033Ow", KEY_A1);	/* numpad 7 */
+    define_key("\033Ox", KEY_UP);	/* numpad 8 */
+    define_key("\033Oy", KEY_A3);	/* numpad 9 */
+
+    /* These numpad keys don't have Curses KEY_* constants to map to. */
+    define_key("\033Ol", (int)'+');	/* numpad + */
+    define_key("\033On", (int)'.');	/* numpad . */
+    define_key("\033Op", (int)'0');	/* numpad 0 */
+
+    /* Quirk: In PuTTY's default config, the Num Lock, '/', '*' and '-' numpad
+     * keys masquerade as F1, F2, F3 and F4 respectively, while the F1, F2, F3
+     * and F4 keys emit unrecognized escape codes.
+     *
+     * In theory these numpad keys could be unmapped and have those codes given
+     * to the F1-4 keys, but in practice this breaks F1-4 for terminals that
+     * correctly map F1-4.  Instead, we'll compromise and map F1-4 without
+     * unmapping those numpad keys; we won't be able to tell them apart, but at
+     * least F1-4 will map to *something*. */
+    define_key("\033[11~", KEY_F(1));
+    define_key("\033[12~", KEY_F(2));
+    define_key("\033[13~", KEY_F(3));
+    define_key("\033[14~", KEY_F(4));
+
+    /* There are probably more keys not listed here that don't work right
+     * out-of-the-box with PuTTY... */
+#endif
+}
+
+
 void init_curses_ui(void)
 {
     /* set up the default system locale by reading the environment variables */
     setlocale(LC_ALL, "");
-    
+
     curses_scr = newterm(NULL, stdout, stdin);
     set_term(curses_scr);
-    
+
     if (LINES < 24 || COLS < COLNO) {
 	fprintf(stderr, "Sorry, your terminal is too small for DynaHack. Current: (%x, %x)\n", COLS, LINES);
 	endwin();
 	exit(0);
     }
-    
+
     noecho();
     raw();
     nonl();
@@ -67,12 +107,13 @@ void init_curses_ui(void)
     leaveok(basewin, TRUE);
     orig_cursor = curs_set(1);
     keypad(basewin, TRUE);
+    define_extra_keypad_keys();
     set_escdelay(20);
-    
+
     init_nhcolors();
     ui_flags.playmode = MODE_NORMAL;
     ui_flags.unicode = _nc_unicode_locale();
-    
+
     /* with PDCurses/Win32 stdscr is not NULL before newterm runs, which caused
      * crashes. So basewin is a copy of stdscr which is known to be NULL before
      * curses is inited. */
@@ -100,6 +141,13 @@ void exit_curses_ui(void)
     endwin();
     delscreen(curses_scr);
     basewin = NULL;
+
+#ifdef UNIX
+    /* Force the cursor to be visible.  In theory, the curs_set() call above
+     * should do that.  In practice, something about the game running in
+     * dgamelaunch prevents this from happening properly. */
+    write(1, "\033[?25h", 6);
+#endif
 }
 
 
@@ -133,45 +181,42 @@ static void draw_frame(void)
 	return;
 
     frame_attr = frame_hp_color();
-    wattron(basewin, frame_attr);
 
     /* vertical lines */
-    mvwvline(basewin, 1, 0, ACS_VLINE, ui_flags.viewheight);
-    mvwvline(basewin, 1, COLNO + 1, ACS_VLINE, ui_flags.viewheight);
+    nh_box_mvwvline(basewin, 1, 0, ui_flags.viewheight, frame_attr);
+    nh_box_mvwvline(basewin, 1, COLNO + 1, ui_flags.viewheight, frame_attr);
 
     /* horizontal top line above the message win */
-    mvwaddch(basewin, 0, 0, ACS_ULCORNER);
-    whline(basewin, ACS_HLINE, COLNO);
-    mvwaddch(basewin, 0, COLNO + 1, ACS_URCORNER);
-    
+    nh_box_mvwadd_ulcorner(basewin, 0, 0, frame_attr);
+    nh_box_whline(basewin, COLNO, frame_attr);
+    nh_box_mvwadd_urcorner(basewin, 0, COLNO + 1, frame_attr);
+
     /* horizontal line between message and map windows */
-    mvwaddch(basewin, 1 + ui_flags.msgheight, 0, ACS_LTEE);
-    whline(basewin, ACS_HLINE, COLNO);
-    mvwaddch(basewin, 1 + ui_flags.msgheight, COLNO + 1, ACS_RTEE);
-    
+    nh_box_mvwadd_ltee(basewin, 1 + ui_flags.msgheight, 0, frame_attr);
+    nh_box_whline(basewin, COLNO, frame_attr);
+    nh_box_mvwadd_rtee(basewin, 1 + ui_flags.msgheight, COLNO + 1, frame_attr);
+
     /* horizontal line between map and status */
-    mvwaddch(basewin, 2 + ui_flags.msgheight + ROWNO, 0, ACS_LTEE);
-    whline(basewin, ACS_HLINE, COLNO);
-    mvwaddch(basewin, 2 + ui_flags.msgheight + ROWNO, COLNO + 1, ACS_RTEE);
-    
+    nh_box_mvwadd_ltee(basewin, 2 + ui_flags.msgheight + ROWNO, 0, frame_attr);
+    nh_box_whline(basewin, COLNO, frame_attr);
+    nh_box_mvwadd_rtee(basewin, 2 + ui_flags.msgheight + ROWNO, COLNO + 1, frame_attr);
+
     /* horizontal bottom line */
-    mvwaddch(basewin, ui_flags.viewheight + 1, 0, ACS_LLCORNER);
-    whline(basewin, ACS_HLINE, COLNO);
-    mvwaddch(basewin, ui_flags.viewheight + 1, COLNO + 1, ACS_LRCORNER);
-    
+    nh_box_mvwadd_llcorner(basewin, ui_flags.viewheight + 1, 0, frame_attr);
+    nh_box_whline(basewin, COLNO, frame_attr);
+    nh_box_mvwadd_lrcorner(basewin, ui_flags.viewheight + 1, COLNO + 1, frame_attr);
+
     if (ui_flags.draw_sidebar) {
-	mvwaddch(basewin, 0, COLNO + 1, ACS_TTEE);
-	whline(basewin, ACS_HLINE, COLS - COLNO - 3);
-	mvwaddch(basewin, 0, COLS - 1, ACS_URCORNER);
+	nh_box_mvwadd_ttee(basewin, 0, COLNO + 1, frame_attr);
+	nh_box_whline(basewin, COLS - COLNO - 3, frame_attr);
+	nh_box_mvwadd_urcorner(basewin, 0, COLS - 1, frame_attr);
 
-	mvwaddch(basewin, ui_flags.viewheight + 1, COLNO + 1, ACS_BTEE);
-	whline(basewin, ACS_HLINE, COLS - COLNO - 3);
-	mvwaddch(basewin, ui_flags.viewheight + 1, COLS - 1, ACS_LRCORNER);
+	nh_box_mvwadd_btee(basewin, ui_flags.viewheight + 1, COLNO + 1, frame_attr);
+	nh_box_whline(basewin, COLS - COLNO - 3, frame_attr);
+	nh_box_mvwadd_lrcorner(basewin, ui_flags.viewheight + 1, COLS - 1, frame_attr);
 
-	mvwvline(basewin, 1, COLS - 1, ACS_VLINE, ui_flags.viewheight);
+	nh_box_mvwvline(basewin, 1, COLS - 1, ui_flags.viewheight, frame_attr);
     }
-
-    wattroff(basewin, frame_attr);
 }
 
 
@@ -388,6 +433,7 @@ void redraw_game_windows(void)
 	}
 	
 	if (sidebar) {
+	    draw_sidebar_divider();
 	    redrawwin(sidebar);
 	    wnoutrefresh(sidebar);
 	}
@@ -445,10 +491,17 @@ void handle_resize(void)
 int nh_wgetch(WINDOW *win)
 {
     int key = 0;
-    
+
     doupdate(); /* required by pdcurses, noop for ncurses */
     do {
 	key = wgetch(win);
+
+	if (key == ERR) {
+	    /* player disconnected so there's no input stream and the handler
+	     * for SIGHUP is on a coffee-break, so just "crash" the game */
+	    exit(2);
+	}
+
 #ifdef UNIX
 	if (key == 0x3 && ui_flags.playmode == MODE_WIZARD) {
 	    /* we're running in raw mode, so ctrl+c doesn't work.
@@ -473,25 +526,25 @@ int nh_wgetch(WINDOW *win)
 	 */
 	if (key == KEY_ESC) {
 	    int key2;
-	    
+
 	    nodelay(win, TRUE);
 	    key2 = wgetch(win); /* check for a following letter */
 	    nodelay(win, FALSE);
-	    
+
 	    if ('a' <= key2 && key2 <= 'z')
 		key = META(key2);
 	}
 #endif
-	    
+
     } while (!key);
-    
+
 #if defined(PDCURSES)
     /* PDCurses provides exciting new names for the enter key.
      * Translate these here, instead of checking for them all over the place. */
     if (key == PADENTER)
 	key = '\r';
 #endif
-    
+
     return key;
 }
 

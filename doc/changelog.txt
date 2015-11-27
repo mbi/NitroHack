@@ -24,14 +24,19 @@ Highlights
 * Extra turn before drowning attack instant death.  Players upgrading from an
   older version of DynaHack should adjust their `msgtype` as described in the
   Configuration section of this changelog.
+* Zombie corpses may revive (lower chance if playing a priest).
 * Sokoban prizes moved to Mines End, making Sokoban much more optional.
 * Nymph level moved into Town branch; Town shops are larger to compensate.
 * Effect of skills on to-hit and damage raised in general.
+* Items that spawn with a magical property have a much higher chance to spawn
+  with additional properties.
 * Slings now get damage bonuses from strength and enchantment.
 * Spells can be aborted at direction, position and item prompts without using
   power or hunger.
 * New `repeat_prefix` keymap and `repeat_num_auto` option for people accustomed
   to NetHack's classic number key movement scheme.
+* New `msg_per_line` option: Shows each message on a new line in the message
+  area when enabled.
 * Potion color alchemy improved in favor of players, making it more of an
   alternative to NetHack's alchemy instead of a nerf.
 * Curses on armor, jewelry and eyewear are now revealed when they are worn
@@ -107,10 +112,15 @@ Character
         - Expert riding gives +2/+5 to-hit/damage (was +0/+2).
         - Restricted weapon skill gives -5 to damage (was -2).
     - Feeling more confident in your skills now interrupts multi-turn actions.
+    - Unskilled no longer causes thrown/fired projectiles to slip due to low
+      skill level; this is now limited to restricted skill.
+    - Allow monks to reach expert skill in shuriken.
 * Increased sling damage: slings now get the strength damage bonus (otherwise
   reserved for melee) and sling enchantment affects damage of fired projectiles
   (normally launcher enchantment only affects to-hit); their damage now even
   competes with thrown daggers!
+* Change effect of luck on to-hit to +(Luck / 3) across the board (previously
+  it was +Luck to everything except melee; from SporkHack).
 * Spells can be aborted at direction, position and item prompts without using
   power or hunger.
 * Teleport control allows teleportation to be cancelled without using a turn and
@@ -132,6 +142,19 @@ Character
             - cannot move with less than 10 HP (5 if polymorphed)
             - lose 1 HP every 30 turns if moving
             - lose 1 HP every 3 turns if attacking
+* Rogues start with a +1 short sword (was +0).
+* Samurai start with a +3 wakizashi (was +0), which slightly out-damages their
+  starting +0 katana.
+* Player vampires no longer try to drink blood when biting or abuse dexterity
+  while satiated (from UnNetHack).
+* Player vampires may bite petrifying, sliming or disintegrating monsters if
+  stunned, confused or hallucinating (from UnNetHackPlus).
+    - Players polymorphed into mind flayers will stop themselves from biting
+      petrifying, sliming and disintegrating monsters, as long as they are not
+      stunned, confused or hallucinating (from UnNetHackPlus).
+* Prevent player vampires from trying and consequently failing to bite shades.
+* Show message when trying and failing to engulf a huge monster while
+  polymorphed as an engulfing monster (from UnNetHackPlus via UnNetHack).
 * Fix C343-238: "(Unix and VMS only) The 'Who are you?' prompt does not accept
   digits in the response."  The official bug description is inaccurate: it's
   names that START with a digit that aren't accepted by vault guards, and it
@@ -159,17 +182,37 @@ Dungeon
     - Magic chests are fixed to the ground and as such cannot be tipped.
     - Attempting to put a corpse set to revive into a magic chest will revive it
       immediately, to prevent exploiting them to get rid of such corpses.
+* New trap type: shuriken traps, which only appear in quest levels of certain
+  roles.  Replaces dart traps in monk and samurai quests, and also sometimes
+  for ranger and rogue quests.
+* Changes to quest levels:
+    - Add guaranteed tinning kit to the Valkyrie quest home level to give
+      players an alternative to eating giant corpses whole for strength and
+      waiting out the satiation outside of the quest portal.
+    - Remove squeeze gap in Caveman quest home level.
+    - Redesign Ranger quest home level with a more organic layout and wider
+      corridors (from dNetHack, originally by Khor).
+        - Redesign Ranger quest goal level with water, trees and an altar
+          (dNetHack).
 * Changes to standard rooms-and-corridors level generation:
     - Grid room level style (from K-Mod).
     - Raise chance of special rooms-and-corridors level style from 10% to 20%.
+* Changes to Medusa's Island:
+    - Give the shortsighted flag to new Medusa's Island levels from UnNetHack,
+      to reduce swarming from ravens/snakes turning those levels into glorified
+      Big Rooms with more water.
+    - The shield of reflection in the statue of Perseus now has the same chance
+      of being blessed or cursed as any other item, instead of being cursed or
+      uncursed with the probability based on the map encountered.
 * Changes to Gehennom:
     - Mazes completely removed from Gehennom!  Both fill levels and filler
       around special levels consist of lava caverns.
-    - Add demon lairs for Demogorgon, Geryon, Dispater, and Yeenoghu (from
-      GruntHack).
+    - Add demon lairs for Geryon, Dispater, and Yeenoghu (from GruntHack).
 * Changes to the Town branch:
     - Nymph level is now guaranteed and appears between the Town surface and
       filler levels.
+        - Nymph level no longer contains traps (squeaky board or otherwise).
+        - 90% of spawns on the Nymph level are nymphs and leprechauns.
     - Town surface level has larger shops.
 * Changes to Vlad's Tower:
     - New entrance level to Vlad's Tower with trees, water, vampires, zombies,
@@ -206,6 +249,11 @@ Wishing
 -------
 * Wands of wishing are generated with at least one charge (1-3 instead of 0-2,
   from UnNetHack 5).
+* Players can wish for up to (and including) 100 projectiles (from
+  UnNetHackPlus via UnNetHack).
+* New alternate spellings recognized by the wish parser:
+    - "wolfsbane" (sprig of wolfsbane)
+    - "scroll of teleport" (scroll of teleportation)
 
 Items
 -----
@@ -227,6 +275,12 @@ Items
       scale mail.
     - Formal ID rings of stealth and elven cloaks when wearing or taking them
       off gives or takes away stealth, to make them consistent with elven boots.
+* Changes to the Amulet of Yendor:
+    - Amulet of Yendor need only be carried to give hints about nearby magic
+      portals, instead of having to wield or wear it (from SporkHack).
+    - Amulet of Yendor has a much higher chance of giving hints about nearby
+      magic portals, and may map/detect them if carried in inventory.
+    - Amulet of Yendor no longer teleports when dropped.
 * Guarantee a wand of cancellation in the Castle chest that can be used for
   blanking scrolls and potions.
 * The shield of reflection now weighs 50 (was 75) due to the introduction of the
@@ -242,6 +296,8 @@ Items
   different candle stacks, even with DynaHack's improved item stacking!
 * Grant +1 to-hit for all short swords (from K-Mod).
 * Allow knife and stiletto as possible tin-opening tools (from K-Mod).
+* Items that spawn with a magical property have a much higher chance to spawn
+  with additional properties.
 * The "magical" prefix on items is only omitted once all properties on it have
   been identified instead of once any of them have been, making it easier to
   discover items that have more than one property.
@@ -249,6 +305,20 @@ Items
 * Rings with enchantment +3 or lower no longer have a chance to explode when
   charged, and rings at -5 or lower will only explode from cursed charging (from
   SporkHack).
+    - Remove ring destruction from shock damage.
+* Quest artifacts that are spawned at the final level of the Quest will be
+  generated fixed/erodeproofed.
+* Having free action reduces paralysis from using a crystal ball from 1-10
+  turns down to 1-2.
+* Land mines and beartraps weigh less (200/100 respectively, previously
+  300/200; from UnNetHackPlus via UnNetHack).
+* Changes to shuriken:
+    - Shuriken no longer break when thrown at monsters.
+    - Shuriken now weigh 3 (previously 1) and cost 10 zorkmids (previously 5).
+* Crossbow bolts only break half as often as other projectiles when fired at
+  and hitting monsters.
+* Fire, cold and shock immunity prevent item destruction.
+    - Wearing a cloak of protection prevents 80% of all item destruction.
 * Fix prefixes like "magical" and "prize" not appearing on rings, wands,
   spellbooks and iron balls under certain circumstances.
 * Fix C343-146: "Unseen wand of striking becomes known if zapped by unseen
@@ -272,8 +342,10 @@ Monsters
   always have a few turns to save yourself from instant death.
 * Drowning attacks give two turns for players to react before instant death (was
   one turn); a monster "pulls you towards the water" before it drowns you.
+* Zombie corpses may revive (lower chance if playing a priest).
+* All eels in water can now be seen from afar, like other monsters.
 * Metallivores and disintegrators can eat through iron bars (from UnNetHack).
-* Allow Demogorgon to be bribed, since his lair is now guaranteed.
+* Allow Demogorgon to be bribed.
 * Tone back demon bribery amounts inherited from UnNetHack: demons now only ask
   for 1000 to 2000 gold.
     - Giving within 80% of the money demanded for a demon bribe succeeds between
@@ -286,7 +358,12 @@ Monsters
   otherwise Asmodeus cold spell-casting attack could do over twice the damage of
   Master Kaen without cold resistance, which is too much even for overprepared
   characters.
+* Gnomes that spawn with candles will only get a single candle instead of a
+  whole stack of candles.
 * Pets never displace the player from the stairs when entering a level.
+* Ninja have a 50% chance to spawn with some shuriken.
+* Remove distintegrators.
+* Nymphs always generate asleep (was 80%).
 * Fix monsters getting your racial armor bonuses instead of theirs.
 
 Interface
@@ -312,6 +389,11 @@ Interface
   to skilled.
     - Mark skills that have reached their maximum as "MAX", and show it as soon
       as the level is reached.
+    - Suppress "0%" in `#enhance` menu for untrained skills.
+    - Show skill caps in `#enhance` menu, e.g. "long sword [basic / expert]".
+    - Show skill slot cost to enhance skills when choosing a skill from the
+      `#enhance` menu, e.g. "Enhance knife to Basic for 1 slot (2 slots left)?
+      [yn] (n)"
 * Show your character's race, role, gender and alignment when asked to enter a
   name for that character (based on the same change in NetHack4).
 * Highlight lit light sources in item listings, e.g. inventory sidebar.
@@ -327,10 +409,21 @@ Interface
 * Dungeon `#overview` can toggle showing levels with no notable features.
     - Dungeon `#overview` no longer exits after viewing a single level.
 * Make extended command prompt case insensitive, like NetHack's (from NetHack4).
+* Change default corridor character back to `#` in Unicode graphics mode.
+* Show warning level 0 for very weak monsters when the player has a source of
+  warning (previously these monsters were not shown at all).
+* Pressing escape at "--More--" now shows the last messages in the message area
+  instead of simply cutting them off.
+* Improve numpad key recognition for default PuTTY configuration where
+  application keypad mode is enabled by default.
 * Fix the color of the Wizard's Tower walls when viewed from another level using
   the `Ctrl-O` dungeon overview.
 * Fix "T - take off" not appearing in the item action menu of meat rings.
 * Fix coordinates reported when getting a position from the player.
+* Fix Rogue level graphics leaking onto other levels when Unicode graphics
+  option is set but Unicode support is not detected.
+* Fix ugly borders in PuTTY by replacing ncurses box drawing characters with
+  Unicode box drawing characters.
 
 Configuration
 -------------
@@ -340,21 +433,54 @@ Configuration
   automatically begins entering repeat prefixes; people who have a habit of
   using the top-row number keys for diagonal movement can toggle this option off
   and map those keys to the movement commands under the `keymap` option.
+* New `msg_per_line` option: Shows each message on a new line in the message
+  area when enabled; can improve readability of messages when the message area
+  is large.
 * "* pulls you towards the water!" mapped to MORE action under `msgtype` submenu
   option for the message given in the new extra turn before monster drowning
   attacks.
+* Frames and borders now respect the 'graphics' option, using Unicode box
+  drawing characters in Unicode mode, and ASCII replacements in plain mode.
 
 Miscellaneous
 -------------
 * Scramble some words in messages on April Fools Day (from NAO).
+* Fix end-of-game scores for non-ascending games being doubled like ascending
+  ones.
 
 Technical
 ---------
+* xlogfile patch (via NetHack 4).
+* Allow certain directories to be customized on game launch:
+    - `-H <dir>` to set the data dir (e.g. nhdat, license)
+    - `-V <dir>` to set the var data "playground" dir (e.g. xlogfile, bones)
+    - `-U <dir>` to set the user dir (e.g. player saves and config files)
+* Set file permissions on *nix-like operating systems (e.g. Linux and OS X) to
+  644 for player config files, preserved save log files, dumplogs, `logfile`,
+  `xlogfile` and `record`.
 * Rename launch script for *nix-like operating systems (e.g. Linux and OS X)
   from `dynahack` to `dynahack.sh` to prevent it from overwriting the actual
   game or confusing and being ignored by the installation system in case the
   build system is accidentally set with identical `SHELLDIR` and `BINDIR` paths.
+* Replace `LD_LIBRARY_PATH` in `dynahack.sh` *nix-like launch script with an
+  rpath configured on the `dynahack` binary.
+* Allow `INSTALL_BASE` to be passed to the initial cmake invocation to quickly
+  set `BINDIR`, `LIBDIR`, `DATADIR` and `SHELLDIR` to sensible default paths
+  under it.
 * Clean up timer debugging code a bit.
+* Limit name of character to `PL_NSIZ` bytes.
+* Clear and redraw the screen every 100 turns to stop dgamelaunch from
+  replaying the entire session when trying to spectate a game.
+* Improvements to static builds (i.e. build configured with `ALL_STATIC`
+  enabled):
+    - `-fPIC` no longer included with static builds.
+    - `libnitrohack.a` no longer installed with static builds, since it's
+      already rolled into the game binary.
+* Treat improperly-truncated save files like crashed ones, instead of trying
+  and failing to load/restore them.
+* Verify integrity of timers and light sources attached to monsters and objects
+  to prevent unloadable save files.
+    - Fix timers being transferred into timer chains out-of-order (NetHack 4).
 * Fix warning when leaving bones while wielding an attached heavy iron ball.
 * Fix infinite loop when placing a branch entrance on joined cavern levels.
 * Allow SPILL lev_comp command to accept 0 as a size for e.g. breaking holes in
@@ -365,6 +491,19 @@ Technical
   should be considered a prize of that level; prizes are ignored by monsters,
   don't fall down holes, are ignored by autopickup, and picking up a prize
   causes other prizes on that level to vanish.
+* Fix crash in encumbrance display due to weight underflow e.g. when wishing
+  for 12 million (12 with six zeros) loadstones in wizard mode.
+* Fix "bad fruit" warnings when slime mold is in inventory while inventory
+  sidebar is updated while saving bones.
+* Fix handling of end-of-line comments in `DynaHack.conf` and `curses.conf`.
+* Prevent some potential unbounded reads by placing limits on "%s" format
+  specifiers in `scanf()` family functions used while reading save file
+  headers.
+* Prevent infinite looping for disconnected player input by aborting, in case
+  the hangup signal handler doesn't abort for some reason.
+* Force cursor to be visible after quitting the game.
+* Convert inversed 10-minus-AC D&D-style armor values with just the armor's
+  regular AC value in `src/objects.c`.
 
 DynaHack 0.5.5 (2014-01-16, 78d772a)
 ====================================
