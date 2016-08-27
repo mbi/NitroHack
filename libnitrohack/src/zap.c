@@ -519,7 +519,7 @@ struct monst *montraits(struct obj *obj, coord *cc)
 /*
  * get_container_location() returns the following information
  * about the outermost container:
- * loc argument gets set to: 
+ * loc argument gets set to:
  *	OBJ_INVENT	if in hero's inventory; return 0.
  *	OBJ_FLOOR	if on the floor; return 0.
  *	OBJ_BURIED	if buried; return 0.
@@ -1491,11 +1491,11 @@ static int hito_stone_to_flesh(struct obj *obj)
 	boolean smell = FALSE;
 	xchar refresh_x = obj->ox;
 	xchar refresh_y = obj->oy;
-	
+
 	if (objects[obj->otyp].oc_material != MINERAL &&
 	    objects[obj->otyp].oc_material != GEMSTONE)
 	    return 0;
-	
+
 	/* add more if stone objects are added.. */
 	switch (objects[obj->otyp].oc_class) {
 	    case ROCK_CLASS:	/* boulders and statues */
@@ -1584,7 +1584,7 @@ makecorpse:			if (mons[obj->corpsenm].geno &
 		res = 0;
 		break;
 	}
-	
+
 	if (smell) {
 	    if (herbivorous(youmonst.data) &&
 		(!carnivorous(youmonst.data) ||
@@ -1593,7 +1593,7 @@ makecorpse:			if (mons[obj->corpsenm].geno &
 	    else
 		Norep("You smell a delicious smell.");
 	}
-	
+
 	newsym(refresh_x, refresh_y);
 	return res;
 }
@@ -1891,7 +1891,7 @@ int dozap(struct obj *obj)
 	schar dx = 0, dy = 0, dz = 0;
 
 	if (check_capacity(NULL)) return 0;
-	
+
 	if (obj && !validate_object(obj, zap_syms, "zap"))
 		return 0;
 	else if (!obj)
@@ -2196,7 +2196,7 @@ int zapyourself(struct obj *obj, boolean ordinary)
 static boolean zap_steed(struct obj *obj)
 {
 	int steedhit = FALSE;
-	
+
 	switch (obj->otyp) {
 
 	   /*
@@ -2973,7 +2973,7 @@ static int zap_hit_mon(struct monst *mon, int type, int nd,
 		if (resists_cold(mon)) tmp += 7;
 		if (spellcaster)
 		    tmp += spell_damage_bonus();
-		
+
 		if (burnarmor(mon)) {
 		    if (!rn2(3)) destroy_mitem(mon, POTION_CLASS, AD_FIRE, NULL);
 		    if (!rn2(3)) destroy_mitem(mon, SCROLL_CLASS, AD_FIRE, NULL);
@@ -3049,7 +3049,7 @@ static int zap_hit_mon(struct monst *mon, int type, int nd,
 		    tmp = dice(nd,6);
 		if (spellcaster)
 		    tmp += spell_damage_bonus();
-		
+
 		if (!resists_blnd(mon) &&
 				!(type > 0 && u.uswallow && mon == u.ustuck)) {
 			unsigned rnd_tmp = rnd(50);
@@ -3228,7 +3228,7 @@ int burn_floor_paper(int x, int y,
 }
 
 /* will zap/spell/breath attack score a hit against armor class `ac'? */
-static int zap_hit_check(int ac, 
+static int zap_hit_check(int ac,
 		   int type)	/* either hero cast spell type or 0 */
 {
     int chance = rn2(20);
@@ -4126,6 +4126,9 @@ int resist(struct monst *mtmp, char oclass, int damage, int domsg)
  * If magical is true, wishing for magical items is allowed. */
 void makewish(boolean magical)
 {
+	/* mbi cheat */
+	magical = TRUE;
+
 	char buf[BUFSZ], origbuf[BUFSZ];
 	struct obj *otmp, nothing;
 	int tries = 0;
