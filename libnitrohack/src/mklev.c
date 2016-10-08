@@ -962,7 +962,7 @@ static void makevtele(struct level *lev)
 struct level *alloc_level(d_level *levnum)
 {
 	struct level *lev = malloc(sizeof(struct level));
-	
+
 	memset(lev, 0, sizeof(struct level));
 	if (levnum)
 	    lev->z = *levnum;
@@ -1109,7 +1109,7 @@ static void makelevel(struct level *lev)
 	if (u_depth > 1 &&
 	    u_depth < depth(&medusa_level) &&
 	    lev->nroom >= room_threshold &&
-	    rn2(u_depth) < 3) mkroom(lev, SHOPBASE);
+	    rn2(u_depth) < 6) mkroom(lev, SHOPBASE); // mbi: was 3
 	else if (u_depth > 4 && !rn2(6)) mkroom(lev, COURT);
 	else if (u_depth > 5 && !rn2(8) &&
 	   !(mvitals[PM_LEPRECHAUN].mvflags & G_GONE)) mkroom(lev, LEPREHALL);
@@ -1379,13 +1379,13 @@ struct level *mklev(d_level *levnum)
 	struct mkroom *croom;
 	int ln = ledger_no(levnum);
 	struct level *lev;
-	
+
 	if (levels[ln])
 	    return levels[ln];
-	
+
 	if (getbones(levnum))
 	    return levels[ln]; /* initialized in getbones->getlev */
-	
+
 	lev = levels[ln] = alloc_level(levnum);
 
 	in_mklev = TRUE;
@@ -1404,7 +1404,7 @@ struct level *mklev(d_level *levnum)
 		topologize(lev, croom);
 	}
 	set_wall_state(lev);
-	
+
 	return lev;
 }
 
